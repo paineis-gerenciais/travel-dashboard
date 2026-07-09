@@ -1,21 +1,25 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, lazy } from 'react';
 import { useTrip } from '../store/TripProvider.jsx';
 import { useTrips } from '../store/TripsProvider.jsx';
 import { normalizeState } from '../domain/state.js';
 import { mainCities } from '../domain/dates.js';
+import { logError } from '../lib/logger.js';
 import VersionsModal from './VersionsModal.jsx';
 import ShareModal from './ShareModal.jsx';
+import DiagnosticsModal from './DiagnosticsModal.jsx';
 import PresenceBar from './PresenceBar.jsx';
-import Resumo from './screens/Resumo.jsx';
-import Roteiro from './screens/Roteiro.jsx';
-import Mapa from './screens/Mapa.jsx';
-import Cidades from './screens/Cidades.jsx';
-import Transporte from './screens/Transporte.jsx';
-import Alimentacao from './screens/Alimentacao.jsx';
-import Atracoes from './screens/Atracoes.jsx';
-import Outras from './screens/Outras.jsx';
-import Checklist from './screens/Checklist.jsx';
-import Custos from './screens/Custos.jsx';
+
+// Code-splitting (item 3.8): as 10 telas são carregadas sob demanda.
+const Resumo = lazy(() => import('./screens/Resumo.jsx'));
+const Roteiro = lazy(() => import('./screens/Roteiro.jsx'));
+const Mapa = lazy(() => import('./screens/Mapa.jsx'));
+const Cidades = lazy(() => import('./screens/Cidades.jsx'));
+const Transporte = lazy(() => import('./screens/Transporte.jsx'));
+const Alimentacao = lazy(() => import('./screens/Alimentacao.jsx'));
+const Atracoes = lazy(() => import('./screens/Atracoes.jsx'));
+const Outras = lazy(() => import('./screens/Outras.jsx'));
+const Checklist = lazy(() => import('./screens/Checklist.jsx'));
+const Custos = lazy(() => import('./screens/Custos.jsx'));
 
 const TABS = [
   ['resumo', '🏠', 'Resumo', Resumo],
@@ -30,28 +34,36 @@ const TABS = [
   ['custos', '💰', 'Custos', Custos],
 ];
 
-export default function App({ user }) {
+export default function App({ user, onLogout, theme, toggleTheme }) {
   const { state, tripName, dirty, actions } = useTrip();
   const { activeTripId, trips, actions: tripsActions } = useTrips();
   const [active, setActive] = useState('resumo');
-  const [showVersions, setShowVersions] = useState(false);
-  const [showShare, setShowShare] = useState(false);
-  const [showClear, setShowClear] = useState(false);
+  const [modal, setModal] = useState(null); // 'versions' | 'share' | 'clear' | 'diag' | null
+  const [menuOpen, setMenuOpen] = useState(false);
   const fileRef = useRef(null);
   const ActiveComponent = TABS.find((t) => t[0] === active)[3];
   const title = tripName || state.settings.title || 'Planejamento da Viagem';
   const activeTrip = trips.find((t) => t.id === activeTripId);
   const isOwner = activeTrip ? activeTrip.ownerId === user.uid : true;
 
+  // Fechar modal/menu com Esc (acessibilidade — item 3.5)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') { setModal(null); setMenuOpen(false); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   const exportJSON = () => {
-    const cityName = (mainCities(state)[0] || 'sem-cidade').replace(/\s+/g, '-');
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `dados-viagem-${cityName}.json`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    try {
+      const cityName = (mainCities(state)[0] || 'sem-cidade').replace(/\s+/g, '-');
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `dados-viagem-${cityName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    } catch (e) { logError('exportJSON', e); }
   };
 
   const importJSON = (ev) => {
@@ -66,11 +78,13 @@ export default function App({ user }) {
           actions.replaceState(normalizeState(obj));
           setActive('resumo');
         }
-      } catch { alert('Arquivo JSON inválido.'); }
+      } catch (e) { logError('importJSON', e); alert('Arquivo JSON inválido.'); }
     };
     reader.readAsText(file);
     ev.target.value = '';
   };
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <div data-screen={active}>
@@ -78,7 +92,7 @@ export default function App({ user }) {
         <div className="container">
           <h1>
             {title}
-            {dirty && <span className="dirty-dot" title="Salvando alterações…" />}
+            {dirty && <span className="dirty-dot" title="Salvando alterações…" aria-label="Salvando alterações" />}
           </h1>
           <p className="subtitle">{state.settings.subtitle}</p>
           <div className="topbar">
@@ -88,21 +102,35 @@ export default function App({ user }) {
                   key={id}
                   className={active === id ? 'active' : ''}
                   aria-label={label}
-                  onClick={() => { setActive(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  aria-current={active === id ? 'page' : undefined}
+                  onClick={() => { setActive(id); closeMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 >
                   <span aria-hidden="true">{icon}</span>
                   <span>{label}</span>
                 </button>
               ))}
             </nav>
-            <div className="actions">
-              <button onClick={() => tripsActions.closeTrip()}>← Minhas viagens</button>
-              <button onClick={() => setShowShare(true)}>Compartilhar</button>
-              <button onClick={() => setShowVersions(true)}>Versões</button>
-              <button onClick={exportJSON}>Exportar JSON</button>
-              <button onClick={() => fileRef.current.click()}>Importar JSON</button>
-              <button onClick={() => window.print()}>Imprimir</button>
-              <button className="danger" onClick={() => setShowClear(true)}>Limpar</button>
+            <button
+              className="linkbtn more-menu"
+              aria-label="Mais ações"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              ⋯ Ações
+            </button>
+            <div className={`actions${menuOpen ? ' open' : ''}`}>
+              <button onClick={() => { tripsActions.closeTrip(); closeMenu(); }}>← Minhas viagens</button>
+              <button onClick={() => { setModal('share'); closeMenu(); }}>Compartilhar</button>
+              <button onClick={() => { setModal('versions'); closeMenu(); }}>Versões</button>
+              <button onClick={() => { exportJSON(); closeMenu(); }}>Exportar JSON</button>
+              <button onClick={() => { fileRef.current.click(); closeMenu(); }}>Importar JSON</button>
+              <button onClick={() => { window.print(); closeMenu(); }}>Imprimir</button>
+              <button aria-label="Alternar tema claro/escuro" onClick={toggleTheme}>
+                {theme === 'dark' ? '☀️ Claro' : '🌙 Escuro'}
+              </button>
+              <button onClick={() => { setModal('diag'); closeMenu(); }}>Diagnóstico</button>
+              <button className="danger" onClick={() => { setModal('clear'); closeMenu(); }}>Limpar</button>
+              <button onClick={() => { closeMenu(); onLogout(); }}>Sair</button>
               <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importJSON} />
             </div>
           </div>
@@ -115,22 +143,17 @@ export default function App({ user }) {
         </div>
       </main>
 
-      {showVersions && <VersionsModal tripId={activeTripId} onClose={() => setShowVersions(false)} />}
-      {showShare && (
-        <ShareModal
-          tripId={activeTripId}
-          tripName={title}
-          user={user}
-          isOwner={isOwner}
-          onClose={() => setShowShare(false)}
-        />
+      {modal === 'versions' && <VersionsModal tripId={activeTripId} onClose={() => setModal(null)} />}
+      {modal === 'share' && (
+        <ShareModal tripId={activeTripId} tripName={title} user={user} isOwner={isOwner} onClose={() => setModal(null)} />
       )}
-      {showClear && (
-        <div className="modal-backdrop" onClick={() => setShowClear(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+      {modal === 'diag' && <DiagnosticsModal onClose={() => setModal(null)} />}
+      {modal === 'clear' && (
+        <div className="modal-backdrop" onClick={() => setModal(null)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Limpar viagem" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-head">
               <h3>Limpar viagem</h3>
-              <button className="ghost" onClick={() => setShowClear(false)}>Fechar</button>
+              <button className="ghost" onClick={() => setModal(null)}>Fechar</button>
             </div>
             <p>
               Isso apaga o conteúdo atual desta viagem (cidades, custos, checklist) para você
@@ -138,10 +161,10 @@ export default function App({ user }) {
               são afetadas.
             </p>
             <div className="toolbar">
-              <button className="danger" onClick={() => { actions.clearCurrent(); setShowClear(false); setActive('resumo'); }}>
+              <button className="danger" onClick={() => { actions.clearCurrent(); setModal(null); setActive('resumo'); }}>
                 Limpar esta viagem
               </button>
-              <button className="ghost" onClick={() => setShowClear(false)}>Cancelar</button>
+              <button className="ghost" onClick={() => setModal(null)}>Cancelar</button>
             </div>
           </div>
         </div>

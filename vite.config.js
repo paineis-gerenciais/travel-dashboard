@@ -46,6 +46,16 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          react: ['react', 'react-dom'],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

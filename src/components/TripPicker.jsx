@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTrips } from '../store/TripsProvider.jsx';
 
-export default function TripPicker() {
+export default function TripPicker({ onLogout, theme, toggleTheme }) {
   const { trips, user, actions } = useTrips();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -21,8 +21,18 @@ export default function TripPicker() {
     <div data-screen="resumo">
       <header>
         <div className="container">
-          <h1>Minhas viagens</h1>
-          <p className="subtitle">Escolha uma viagem para planejar, ou crie uma nova.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <h1>Minhas viagens</h1>
+              <p className="subtitle">Escolha uma viagem para planejar, ou crie uma nova.</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button aria-label="Alternar tema claro/escuro" onClick={toggleTheme}>
+                {theme === 'dark' ? '☀️ Claro' : '🌙 Escuro'}
+              </button>
+              <button onClick={onLogout}>Sair</button>
+            </div>
+          </div>
         </div>
       </header>
       <main>

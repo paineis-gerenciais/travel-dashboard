@@ -66,7 +66,7 @@ export default function VersionsModal({ tripId, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>Versões salvas</h3>
           <button className="ghost" onClick={onClose}>Fechar</button>

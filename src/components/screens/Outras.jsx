@@ -4,6 +4,8 @@ import { datesFromCities, cityForDate } from '../../domain/dates.js';
 import { dayOther } from '../../domain/costs.js';
 import { statusRowClass, StatusSelect } from '../ui.jsx';
 import { useTextFilter } from '../tableHelpers.js';
+import { usePagination, Pager } from '../usePagination.jsx';
+import MoneyInput from '../MoneyInput.jsx';
 
 export default function Outras() {
   const { state, actions } = useTrip();
@@ -12,6 +14,7 @@ export default function Outras() {
 
   const sorted = [...state.otherExpenses].sort((a, b) => a.date.localeCompare(b.date));
   const rows = filter(sorted, (x) => [x.date, x.name, x.city].join(' '));
+  const { paged, ...pag } = usePagination(rows, 40);
 
   return (
     <section>
@@ -24,7 +27,7 @@ export default function Outras() {
         <table>
           <thead><tr><th>Data</th><th>Cidade</th><th>Despesa</th><th>Custo</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            {rows.map((x) => {
+            {paged.map((x) => {
               const i = state.otherExpenses.indexOf(x);
               return (
                 <tr className={statusRowClass(x)} key={x.id}>
@@ -33,7 +36,7 @@ export default function Outras() {
                   </td>
                   <td data-label="Cidade">{x.city}</td>
                   <td data-label="Despesa"><input value={x.name || ''} onChange={(e) => actions.updateItem('otherExpenses', i, 'name', e.target.value)} /></td>
-                  <td data-label="Custo"><input type="number" value={num(x.cost)} onChange={(e) => actions.updateItem('otherExpenses', i, 'cost', e.target.value)} /></td>
+                  <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('otherExpenses', i, 'cost', v)} /></td>
                   <td data-label="Status"><StatusSelect value={x.status} onChange={(v) => actions.updateItem('otherExpenses', i, 'status', v)} /></td>
                   <td><button className="small-btn danger" onClick={() => actions.deleteItem('otherExpenses', i)}>Excluir</button></td>
                 </tr>
@@ -42,6 +45,7 @@ export default function Outras() {
           </tbody>
         </table>
       </div>
+      <Pager {...pag} />
       <br />
       <div className="card">
         <h3>Consolidado por dia</h3>
