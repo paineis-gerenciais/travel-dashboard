@@ -1,18 +1,19 @@
-// store/useAuth.js
-// Hook de autenticação (item 2.1 já preparado, mas usado aqui só para associar
-// os dados a um uid). Login com Google, coerente com o fluxo que já existia no
-// Apps Script (onde o usuário também se identificava pela conta Google).
-
+// store/useAuth.js — autenticação (login Google) + gravação do perfil no login.
 import { useState, useEffect } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase.js';
+import { upsertUserProfile } from '../lib/tripData.js';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        // grava/atualiza o perfil (necessário para convites e exibição de nomes)
+        try { await upsertUserProfile(u); } catch (e) { console.error('Falha ao gravar perfil', e); }
+      }
       setUser(u);
       setLoading(false);
     });

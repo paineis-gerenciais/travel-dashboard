@@ -1,104 +1,215 @@
-// lib/tripData.js
-// Camada de acesso a dados do Firestore (item 1.6, modelo single-user).
-//
-// Modelo de dados desta fase (antes de perfis/compartilhamento da Fase 2):
-//   users/{uid}                       -> documento do usuário (settings + state atual)
-//   users/{uid}/versions/{versionId}  -> snapshots nomeados (equivale às "versões" do Sheets)
-//
-// A migração da Fase 2 moverá isto para uma coleção `trips` com ownerId +
-// collaborators. Manter este arquivo como a ÚNICA porta de entrada ao
-// Firestore facilita essa evolução (um só lugar para mudar).
+// lib/tripData.js — camada de acesso ao Firestore (Fase 2, multi-viagem).
+// Única porta de entrada ao banco. Modelo:
+//   users/{uid}                      -> perfil (privado)
+//   trips/{tripId}                   -> { ownerId, ownerEmail, name, state, memberUids[] }
+//   trips/{tripId}/versions/{id}     -> snapshots nomeados
+//   trips/{tripId}/members/{uid}     -> info de exibição (nome/e-mail/papel)
+//   trips/{tripId}/presence/{uid}    -> { displayName, lastSeenMs }
+//   convites/{tripId_email}          -> { tripId, tripName, emailConvidado, ownerUid, status }
 
 import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  deleteDoc,
-  serverTimestamp,
-  onSnapshot,
+  doc, getDoc, setDoc, updateDoc, deleteDoc,
+  collection, getDocs, query, where, onSnapshot,
+  serverTimestamp, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
-import { normalizeState } from '../domain/state.js';
+import { normalizeState, blankState } from '../domain/state.js';
 
-/** Referência ao documento principal do usuário. */
-function userDocRef(uid) {
-  return doc(db, 'users', uid);
-}
+const lower = (s) => String(s || '').trim().toLowerCase();
+const inviteId = (tripId, email) => `${tripId}_${lower(email)}`;
 
-/** Carrega o state atual do usuário (ou null se ainda não existe). */
-export async function loadCurrentState(uid) {
-  const snap = await getDoc(userDocRef(uid));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return data.state ? normalizeState(data.state) : null;
-}
-
-/** Assina mudanças em tempo real do state do usuário. Retorna unsubscribe. */
-export function subscribeCurrentState(uid, callback) {
-  return onSnapshot(userDocRef(uid), (snap) => {
-    if (snap.exists() && snap.data().state) {
-      callback(normalizeState(snap.data().state));
-    }
-  });
-}
-
-/** Salva o state atual (rascunho). Sobrescreve o campo `state` do usuário. */
-export async function saveCurrentState(uid, state) {
+/* ---------- Perfil ---------- */
+export async function upsertUserProfile(user) {
   await setDoc(
-    userDocRef(uid),
-    { state, updatedAt: serverTimestamp() },
+    doc(db, 'users', user.uid),
+    { email: lower(user.email), displayName: user.displayName || user.email || 'Usuário', updatedAt: serverTimestamp() },
     { merge: true }
   );
 }
 
-/** Lista as versões salvas (metadados, sem o state completo, para ser rápido). */
-export async function listVersions(uid) {
-  const col = collection(db, 'users', uid, 'versions');
-  const snap = await getDocs(col);
-  return snap.docs
-    .map((d) => {
-      const v = d.data();
-      return {
-        id: d.id,
-        name: v.name || '',
-        city: v.city || '',
-        days: Number(v.days) || 0,
-        total: Number(v.total) || 0,
-        dateText: v.dateText || '',
-        createdAtMs: v.createdAtMs || 0,
-      };
-    })
-    .sort((a, b) => b.createdAtMs - a.createdAtMs);
-}
-
-/** Salva uma nova versão nomeada (snapshot do state). */
-export async function saveVersion(uid, meta, state) {
-  const id = meta.id || crypto.randomUUID();
-  const ref = doc(db, 'users', uid, 'versions', id);
-  await setDoc(ref, {
-    name: meta.name,
-    city: meta.city,
-    days: meta.days,
-    total: meta.total,
-    dateText: meta.dateText,
-    createdAtMs: Date.now(),
-    createdAt: serverTimestamp(),
-    state,
+/* ---------- Viagens ---------- */
+export function subscribeMyTrips(uid, cb) {
+  const q = query(collection(db, 'trips'), where('memberUids', 'array-contains', uid));
+  return onSnapshot(q, (snap) => {
+    cb(
+      snap.docs
+        .map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            name: data.name || 'Viagem sem nome',
+            ownerId: data.ownerId,
+            ownerEmail: data.ownerEmail || '',
+            memberUids: data.memberUids || [],
+            updatedAtMs: data.updatedAtMs || 0,
+          };
+        })
+        .sort((a, b) => b.updatedAtMs - a.updatedAtMs)
+    );
   });
-  return id;
 }
 
-/** Carrega o state completo de uma versão específica. */
-export async function loadVersion(uid, versionId) {
-  const ref = doc(db, 'users', uid, 'versions', versionId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('Versão não encontrada (pode ter sido excluída).');
-  return normalizeState(snap.data().state);
+export function subscribeTrip(tripId, cb) {
+  return onSnapshot(doc(db, 'trips', tripId), (snap) => {
+    if (!snap.exists()) { cb({ exists: false }); return; }
+    const data = snap.data();
+    cb({ exists: true, name: data.name || '', ownerId: data.ownerId, memberUids: data.memberUids || [], state: data.state || null });
+  });
 }
 
-/** Exclui uma versão salva. */
-export async function deleteVersion(uid, versionId) {
-  await deleteDoc(doc(db, 'users', uid, 'versions', versionId));
+export async function createTrip(user, name) {
+  const ref = doc(collection(db, 'trips'));
+  const email = lower(user.email);
+  await setDoc(ref, {
+    ownerId: user.uid,
+    ownerEmail: email,
+    name: name || 'Nova viagem',
+    state: blankState(),
+    memberUids: [user.uid],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now(),
+  });
+  await setDoc(doc(db, 'trips', ref.id, 'members', user.uid), {
+    email, displayName: user.displayName || email, role: 'owner', joinedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function renameTrip(tripId, name) {
+  await updateDoc(doc(db, 'trips', tripId), { name });
+}
+
+export async function deleteTrip(tripId) {
+  // best-effort: remove versões antes de apagar a viagem (client não cascateia)
+  try {
+    const vs = await getDocs(collection(db, 'trips', tripId, 'versions'));
+    await Promise.all(vs.docs.map((d) => deleteDoc(d.ref)));
+  } catch (e) { console.error('Falha ao limpar versões da viagem', e); }
+  await deleteDoc(doc(db, 'trips', tripId));
+}
+
+export async function saveTripState(tripId, state) {
+  await updateDoc(doc(db, 'trips', tripId), { state, updatedAt: serverTimestamp(), updatedAtMs: Date.now() });
+}
+
+/* ---------- Versões ---------- */
+function versionMeta(data) {
+  return {
+    name: data.name || '',
+    city: data.city || '',
+    days: Number(data.days) || 0,
+    total: Number(data.total) || 0,
+    dateText: data.dateText || '',
+    createdAtMs: data.createdAtMs || 0,
+  };
+}
+
+export async function listVersions(tripId) {
+  const snap = await getDocs(collection(db, 'trips', tripId, 'versions'));
+  return snap.docs.map((d) => ({ id: d.id, ...versionMeta(d.data()) })).sort((a, b) => b.createdAtMs - a.createdAtMs);
+}
+
+export async function saveNewVersion(tripId, meta, state) {
+  const ref = doc(collection(db, 'trips', tripId, 'versions'));
+  await setDoc(ref, { ...meta, createdAtMs: Date.now(), createdAt: serverTimestamp(), state });
+  return ref.id;
+}
+
+export async function overwriteVersion(tripId, versionId, meta, state) {
+  await setDoc(doc(db, 'trips', tripId, 'versions', versionId), {
+    ...meta, createdAtMs: Date.now(), createdAt: serverTimestamp(), state,
+  });
+}
+
+export async function loadVersion(tripId, versionId) {
+  const s = await getDoc(doc(db, 'trips', tripId, 'versions', versionId));
+  if (!s.exists()) throw new Error('Versão não encontrada (pode ter sido excluída).');
+  return normalizeState(s.data().state);
+}
+
+export async function deleteVersion(tripId, versionId) {
+  await deleteDoc(doc(db, 'trips', tripId, 'versions', versionId));
+}
+
+/* ---------- Convites ---------- */
+export async function createInvite(tripId, tripName, ownerUser, email) {
+  const e = lower(email);
+  if (!e) throw new Error('Informe um e-mail.');
+  await setDoc(doc(db, 'convites', inviteId(tripId, e)), {
+    tripId, tripName, emailConvidado: e, ownerUid: ownerUser.uid, ownerEmail: lower(ownerUser.email),
+    status: 'pendente', createdAt: serverTimestamp(),
+  });
+}
+
+/** Convites que o dono criou para uma viagem (para a UI de gestão). */
+export async function listInvitesForTrip(tripId, ownerUid) {
+  const q = query(collection(db, 'convites'), where('ownerUid', '==', ownerUid));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c) => c.tripId === tripId);
+}
+
+export async function cancelInvite(conviteId) {
+  await deleteDoc(doc(db, 'convites', conviteId));
+}
+
+/**
+ * No login: encontra convites pendentes para o e-mail do usuário e concede o
+ * acesso (auto-inclusão na viagem + registro de membro + marca convite aceito).
+ */
+export async function acceptPendingInvites(user) {
+  const e = lower(user.email);
+  if (!e) return;
+  const q = query(collection(db, 'convites'), where('emailConvidado', '==', e));
+  const snap = await getDocs(q);
+  for (const d of snap.docs) {
+    const inv = d.data();
+    if (inv.status && inv.status !== 'pendente') continue;
+    try {
+      await updateDoc(doc(db, 'trips', inv.tripId), { memberUids: arrayUnion(user.uid) });
+      await setDoc(
+        doc(db, 'trips', inv.tripId, 'members', user.uid),
+        { email: e, displayName: user.displayName || e, role: 'editor', joinedAt: serverTimestamp() },
+        { merge: true }
+      );
+      await updateDoc(d.ref, { status: 'aceito', acceptedByUid: user.uid, acceptedAt: serverTimestamp() });
+    } catch (err) {
+      console.error('Falha ao aceitar convite da viagem', inv.tripId, err);
+    }
+  }
+}
+
+/* ---------- Membros ---------- */
+export async function listMembers(tripId) {
+  const snap = await getDocs(collection(db, 'trips', tripId, 'members'));
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+}
+
+export async function revokeMember(tripId, uid) {
+  await updateDoc(doc(db, 'trips', tripId), { memberUids: arrayRemove(uid) });
+  try { await deleteDoc(doc(db, 'trips', tripId, 'members', uid)); } catch (e) { console.error(e); }
+}
+
+/* ---------- Presença ---------- */
+export async function heartbeatPresence(tripId, user) {
+  await setDoc(
+    doc(db, 'trips', tripId, 'presence', user.uid),
+    { displayName: user.displayName || user.email || 'Alguém', lastSeenMs: Date.now(), lastSeen: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+export function subscribePresence(tripId, cb) {
+  return onSnapshot(collection(db, 'trips', tripId, 'presence'), (snap) => {
+    const now = Date.now();
+    cb(
+      snap.docs
+        .map((d) => ({ uid: d.id, ...d.data() }))
+        .filter((p) => p.displayName && now - (p.lastSeenMs || 0) < 35000)
+    );
+  });
+}
+
+export async function clearPresence(tripId, uid) {
+  try { await deleteDoc(doc(db, 'trips', tripId, 'presence', uid)); } catch (e) { /* ignore */ }
 }
