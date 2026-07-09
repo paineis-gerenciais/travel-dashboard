@@ -4,7 +4,9 @@ import { periodByTime, datesFromCities, cityForDate } from '../../domain/dates.j
 import { activeCost, dayAttractions } from '../../domain/costs.js';
 import { statusRowClass, StatusSelect } from '../ui.jsx';
 import { useTextFilter, dateOptions } from '../tableHelpers.js';
+import { usePagination, Pager } from '../usePagination.jsx';
 import { useState } from 'react';
+import MoneyInput from '../MoneyInput.jsx';
 
 export default function Atracoes() {
   const { state, actions } = useTrip();
@@ -15,6 +17,9 @@ export default function Atracoes() {
   const sorted = [...state.attractions].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   const grouped = {};
   filter(sorted, (x) => [x.date, x.name, x.city].join(' ')).forEach((x) => (grouped[x.date] ||= []).push(x));
+
+  const dayKeys = Object.keys(grouped).sort();
+  const { paged: pagedDays, ...pag } = usePagination(dayKeys, 15);
 
   return (
     <section>
@@ -35,7 +40,7 @@ export default function Atracoes() {
             <tr><th>Data</th><th>Cidade</th><th>Horário</th><th>Período</th><th>Nome</th><th>Custo</th><th>Status</th><th>Total do dia</th><th></th></tr>
           </thead>
           <tbody>
-            {Object.keys(grouped).sort().map((date) => {
+            {pagedDays.map((date) => {
               const arr = grouped[date];
               const total = arr.reduce((s, x) => s + activeCost(x), 0);
               return arr.map((x, idx) => {
@@ -54,7 +59,7 @@ export default function Atracoes() {
                     <td data-label="Horário"><input type="time" value={x.time || ''} onChange={(e) => actions.updateItem('attractions', i, 'time', e.target.value)} /></td>
                     <td data-label="Período"><span className="badge">{periodByTime(x.time)}</span></td>
                     <td data-label="Nome"><input value={x.name || ''} onChange={(e) => actions.updateItem('attractions', i, 'name', e.target.value)} /></td>
-                    <td data-label="Custo"><input type="number" value={num(x.cost)} onChange={(e) => actions.updateItem('attractions', i, 'cost', e.target.value)} /></td>
+                    <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('attractions', i, 'cost', v)} /></td>
                     <td data-label="Status"><StatusSelect value={x.status} onChange={(v) => actions.updateItem('attractions', i, 'status', v)} /></td>
                     {idx === 0 && <td data-label="Total do dia" rowSpan={arr.length} className="total-cell">{money(total)}</td>}
                     <td><button className="small-btn danger" onClick={() => actions.deleteItem('attractions', i)}>Excluir</button></td>
@@ -65,6 +70,7 @@ export default function Atracoes() {
           </tbody>
         </table>
       </div>
+      <Pager {...pag} />
       <br />
       <div className="card">
         <h3>Consolidado por dia</h3>

@@ -4,7 +4,9 @@ import { foodOrder, datesFromCities, cityForDate } from '../../domain/dates.js';
 import { activeCost, dayFood } from '../../domain/costs.js';
 import { statusRowClass, StatusSelect } from '../ui.jsx';
 import { useTextFilter, dateOptions } from '../tableHelpers.js';
+import { usePagination, Pager } from '../usePagination.jsx';
 import { useState } from 'react';
+import MoneyInput from '../MoneyInput.jsx';
 
 export default function Alimentacao() {
   const { state, actions } = useTrip();
@@ -20,6 +22,9 @@ export default function Alimentacao() {
   filter(sorted, (x) => [x.date, x.type, x.place, x.city].join(' ')).forEach((x) =>
     (grouped[x.date] ||= []).push(x)
   );
+
+  const dayKeys = Object.keys(grouped).sort();
+  const { paged: pagedDays, ...pag } = usePagination(dayKeys, 15);
 
   return (
     <section>
@@ -44,7 +49,7 @@ export default function Alimentacao() {
             <tr><th>Data</th><th>Cidade</th><th>Tipo</th><th>Restaurante/local</th><th>Custo</th><th>Status</th><th>Total do dia</th><th></th></tr>
           </thead>
           <tbody>
-            {Object.keys(grouped).sort().map((date) => {
+            {pagedDays.map((date) => {
               const arr = grouped[date];
               const total = arr.reduce((s, x) => s + activeCost(x), 0);
               return arr.map((x, idx) => {
@@ -63,7 +68,7 @@ export default function Alimentacao() {
                     )}
                     <td data-label="Tipo"><input value={x.type} onChange={(e) => actions.updateItem('foodItems', i, 'type', e.target.value)} /></td>
                     <td data-label="Restaurante/local"><input value={x.place || ''} onChange={(e) => actions.updateItem('foodItems', i, 'place', e.target.value)} /></td>
-                    <td data-label="Custo"><input type="number" value={num(x.cost)} onChange={(e) => actions.updateItem('foodItems', i, 'cost', e.target.value)} /></td>
+                    <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('foodItems', i, 'cost', v)} /></td>
                     <td data-label="Status"><StatusSelect value={x.status} onChange={(v) => actions.updateItem('foodItems', i, 'status', v)} /></td>
                     {idx === 0 && <td data-label="Total do dia" rowSpan={arr.length} className="total-cell">{money(total)}</td>}
                     <td><button className="small-btn danger" onClick={() => actions.deleteItem('foodItems', i)}>Excluir</button></td>
@@ -74,6 +79,7 @@ export default function Alimentacao() {
           </tbody>
         </table>
       </div>
+      <Pager {...pag} />
       <br />
       <div className="card">
         <h3>Consolidado por dia</h3>

@@ -15,6 +15,8 @@ import {
 } from '../../domain/transport.js';
 import { statusRowClass, StatusSelect } from '../ui.jsx';
 import { useTextFilter } from '../tableHelpers.js';
+import { usePagination, Pager } from '../usePagination.jsx';
+import MoneyInput from '../MoneyInput.jsx';
 
 export default function Transporte() {
   const { state, actions } = useTrip();
@@ -27,6 +29,7 @@ export default function Transporte() {
     [getTransportDate(x), getTransportOrigin(x), getTransportDest(x), getTransportMode(x), x.notes].join(' ')
   );
   const firstDate = allPlanningDates(state)[0]?.date || datesFromCities(state)[0]?.date || '';
+  const { paged, ...pag } = usePagination(rows, 40);
 
   return (
     <section>
@@ -49,7 +52,7 @@ export default function Transporte() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((x) => {
+            {paged.map((x) => {
               const i = state.transports.indexOf(x);
               const originCity = getTransportOriginCity(x);
               const originPlace = getTransportOriginPlace(x) || (!originCity ? getTransportOrigin(x) : '');
@@ -82,7 +85,7 @@ export default function Transporte() {
                     <input value={getTransportDuration(x) || ''} onChange={(e) => actions.updateItem('transports', i, 'duration', e.target.value)} />
                   </td>
                   <td data-label="Custo">
-                    <input type="number" value={getTransportCost(x)} onChange={(e) => actions.updateItem('transports', i, 'cost', e.target.value)} />
+                    <MoneyInput value={getTransportCost(x)} onChange={(v) => actions.updateItem('transports', i, 'cost', v)} />
                   </td>
                   <td data-label="Status">
                     <StatusSelect value={x.status} onChange={(v) => actions.updateItem('transports', i, 'status', v)} />
@@ -100,6 +103,7 @@ export default function Transporte() {
           </tbody>
         </table>
       </div>
+      <Pager {...pag} />
     </section>
   );
 }

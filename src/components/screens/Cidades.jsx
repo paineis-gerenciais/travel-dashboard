@@ -4,6 +4,7 @@ import { money, num } from '../../domain/format.js';
 import { daysBetween, calendarDays, mainCities, uniqueCities } from '../../domain/dates.js';
 import { totals } from '../../domain/costs.js';
 import { Kpi, StatusSelect } from '../ui.jsx';
+import MoneyInput from '../MoneyInput.jsx';
 
 export default function Cidades() {
   const { state, actions } = useTrip();
@@ -106,11 +107,9 @@ export default function Cidades() {
                   <div className="grid grid2">
                     <label>
                       Custo por diária
-                      <input
-                        type="number"
-                        min="0"
+                      <MoneyInput
                         value={num(c.nightly)}
-                        onChange={(e) => actions.setCityField(i, 'nightly', e.target.value)}
+                        onChange={(v) => actions.setCityField(i, 'nightly', v)}
                       />
                     </label>
                     <label>
@@ -165,7 +164,7 @@ export default function Cidades() {
 
       {confirmDelete !== null && (
         <div className="modal-backdrop" onClick={() => setConfirmDelete(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <h3>Excluir cidade</h3>
               <button className="ghost" onClick={() => setConfirmDelete(null)}>
