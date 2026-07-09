@@ -1,0 +1,20 @@
+rules_version = '2';
+// Regras de segurança do Firestore (item 1.6).
+// Modelo single-user desta fase: cada usuário só lê/escreve o próprio documento
+// e as próprias versões. Ninguém acessa dados de outro usuário.
+// (A Fase 2 vai ampliar isto para incluir colaboradores por viagem.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /versions/{versionId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+    // Tudo o mais é negado por padrão.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
