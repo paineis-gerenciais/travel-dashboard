@@ -1,5 +1,24 @@
 import { useState } from 'react';
 import { useTrips } from '../store/TripsProvider.jsx';
+import { blankState, SUBTITLES } from '../domain/state.js';
+
+// Modelo de exemplo (item 4.2): 7 dias, 2 cidades, para o usuário ver o app
+// preenchido em vez de encarar o branco. As datas começam daqui a 30 dias.
+function templateState() {
+  const base = new Date();
+  base.setDate(base.getDate() + 30);
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const d0 = new Date(base);
+  const d4 = new Date(base); d4.setDate(d4.getDate() + 4);
+  const d7 = new Date(base); d7.setDate(d7.getDate() + 7);
+  const s = blankState();
+  s.settings.subtitle = SUBTITLES[0];
+  s.cities = [
+    { id: 'tpl_a', city: 'Lisboa', emoji: '🇵🇹', start: iso(d0), end: iso(d4), hotel: 'Hotel Centro', nightly: 400, status: 'Reservado', notes: 'Exemplo — ajuste à vontade' },
+    { id: 'tpl_b', city: 'Porto', emoji: '🍷', start: iso(d4), end: iso(d7), hotel: 'Pousada Ribeira', nightly: 350, status: 'Planejado', notes: '' },
+  ];
+  return s;
+}
 
 export default function TripPicker({ onLogout, theme, toggleTheme }) {
   const { trips, user, actions } = useTrips();
@@ -7,10 +26,10 @@ export default function TripPicker({ onLogout, theme, toggleTheme }) {
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
 
-  const create = async () => {
+  const create = async (seed) => {
     setBusy(true);
     try {
-      await actions.createTrip(name.trim() || 'Nova viagem');
+      await actions.createTrip(name.trim() || (seed ? 'Viagem exemplo' : 'Nova viagem'), seed);
       setName('');
     } finally {
       setBusy(false);
@@ -46,11 +65,21 @@ export default function TripPicker({ onLogout, theme, toggleTheme }) {
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && create()}
               />
-              <button onClick={create} disabled={busy}>Criar viagem</button>
+              <button onClick={() => create()} disabled={busy}>Criar viagem</button>
+              <button className="ghost" onClick={() => create(templateState())} disabled={busy}>
+                Começar de um modelo (7 dias, 2 cidades)
+              </button>
             </div>
 
             {trips.length === 0 ? (
-              <p className="empty">Você ainda não tem viagens. Crie a primeira acima.</p>
+              <div className="card" style={{ marginTop: 8 }}>
+                <h3>Como funciona</h3>
+                <p className="muted" style={{ margin: 0 }}>
+                  Cadastre <b>cidades com datas</b> de check-in e check-out — o app organiza o resto
+                  (roteiro, alimentação, atrações e custos) automaticamente. Quer ver preenchido
+                  antes? Toque em <b>Começar de um modelo</b> acima.
+                </p>
+              </div>
             ) : (
               <div className="grid grid2">
                 {trips.map((t) => {

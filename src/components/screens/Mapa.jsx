@@ -1,85 +1,81 @@
+import { useState } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate } from '../../domain/format.js';
-import { allPlanningDates, inferCityForDate, periodByTime } from '../../domain/dates.js';
+import { allPlanningDates, inferCityForDate } from '../../domain/dates.js';
 import {
-  gmaps,
   getTransportDate,
   getTransportOrigin,
   getTransportDest,
+  getTransportDurationMinutes,
+  minutesToLabel,
 } from '../../domain/transport.js';
+import RouteEditorModal from '../RouteEditorModal.jsx';
 
-// Monta os pontos de um dia (hospedagem + transportes), opcionalmente filtrando
-// por período. Simplificação fiel do dayMapPoints original.
-function dayMapPoints(state, date, period = null) {
+// Pontos de um dia (hospedagem + transportes + atrações), como sugestão inicial
+// para o editor de rota.
+function dayMapPoints(state, date) {
   const pts = [];
   const city = state.cities.find((c) => date >= c.start && date < c.end);
   if (city && (city.hotel || city.city)) {
-    pts.push({ time: 'Base', label: city.hotel || city.city, query: `${city.hotel || ''} ${city.city}`.trim() });
+    pts.push({ label: city.hotel || city.city, query: (city.hotel || '') + ' ' + city.city });
   }
   state.transports
     .filter((x) => getTransportDate(x) === date)
-    .filter((x) => !period || periodByTime(x.time) === period)
     .forEach((x) => {
       const o = getTransportOrigin(x);
       const d = getTransportDest(x);
-      if (o) pts.push({ time: x.time || '', label: `Saída: ${o}`, query: o });
-      if (d) pts.push({ time: x.time || '', label: `Chegada: ${d}`, query: d });
+      const dur = getTransportDurationMinutes(x);
+      const durTxt = dur ? ' · ' + minutesToLabel(dur) : '';
+      if (o) pts.push({ label: 'Saída: ' + o + durTxt, query: o });
+      if (d) pts.push({ label: 'Chegada: ' + d, query: d });
     });
   state.attractions
     .filter((x) => x.date === date && x.name)
-    .filter((x) => !period || periodByTime(x.time) === period)
-    .forEach((x) => pts.push({ time: x.time || '', label: x.name, query: `${x.name} ${x.city || ''}`.trim() }));
-  return pts;
+    .forEach((x) => pts.push({ label: x.name, query: (x.name + ' ' + (x.city || '')).trim() }));
+  return pts.map((p) => ({ ...p, query: String(p.query).trim() }));
 }
 
 export default function Mapa() {
   const { state } = useTrip();
   const dates = allPlanningDates(state);
+  const [editing, setEditing] = useState(null);
 
   return (
     <section>
       <h2>Mapa</h2>
       <p className="hint">
-        Links do Google Maps gerados por dia, com hospedagem e transporte como pontos da rota.
+        Cada dia tem uma rota sugerida (hospedagem, transporte e atrações). Toque em <b>Rota</b> para
+        ajustar as paradas — incluir, remover ou reordenar — antes de abrir no Google Maps.
       </p>
       {dates.length === 0 ? (
-        <p className="empty">Cadastre cidades, transportes e pontos do roteiro para gerar links de mapa.</p>
+        <p className="empty">Cadastre cidades, transportes e pontos do roteiro para montar rotas.</p>
       ) : (
         <div className="grid grid2">
           {dates.map((d) => {
             const pts = dayMapPoints(state, d.date);
+            const cityLabel = d.city || inferCityForDate(state, d.date) || '';
+            const title = fmtDate(d.date) + ' — ' + cityLabel;
             return (
               <div className="card map-card" key={d.date}>
-                <h3>{fmtDate(d.date)} — {d.city || inferCityForDate(state, d.date) || ''}</h3>
+                <h3>{title}</h3>
                 <div className="map-points">
                   {pts.length
-                    ? pts.map((p, k) => (
-                        <div className="map-point" key={k}>
-                          <b>{p.time}</b> {p.label}
-                        </div>
-                      ))
+                    ? pts.map((p, k) => <div className="map-point" key={k}>{p.label}</div>)
                     : <span className="muted">Sem pontos neste dia.</span>}
                 </div>
-                <div className="toolbar">
-                  <a className="linkbtn" target="_blank" rel="noreferrer" href={gmaps(pts.map((p) => p.query))}>
-                    Rota completa
-                  </a>
-                  {['Manhã', 'Tarde', 'Noite'].map((p) => (
-                    <a
-                      key={p}
-                      className="linkbtn ghost"
-                      target="_blank"
-                      rel="noreferrer"
-                      href={gmaps(dayMapPoints(state, d.date, p).map((x) => x.query))}
-                    >
-                      {p}
-                    </a>
-                  ))}
+                <div className="toolbar" style={{ marginBottom: 0 }}>
+                  <button disabled={pts.length === 0} onClick={() => setEditing({ title, points: pts })}>
+                    Rota
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {editing && (
+        <RouteEditorModal title={editing.title} initialPoints={editing.points} onClose={() => setEditing(null)} />
       )}
     </section>
   );

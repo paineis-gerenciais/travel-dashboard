@@ -13,10 +13,11 @@ import {
   getTransportDuration,
   getTransportCost,
 } from '../../domain/transport.js';
-import { statusRowClass, StatusSelect } from '../ui.jsx';
+import {statusRowClass, StatusSelect, StatusChip } from '../ui.jsx';
 import { useTextFilter } from '../tableHelpers.js';
 import { usePagination, Pager } from '../usePagination.jsx';
 import MoneyInput from '../MoneyInput.jsx';
+import DurationInput from '../DurationInput.jsx';
 
 export default function Transporte() {
   const { state, actions } = useTrip();
@@ -82,13 +83,13 @@ export default function Transporte() {
                     <input value={getTransportMode(x) || ''} onChange={(e) => actions.updateItem('transports', i, 'mode', e.target.value)} />
                   </td>
                   <td data-label="Tempo">
-                    <input value={getTransportDuration(x) || ''} onChange={(e) => actions.updateItem('transports', i, 'duration', e.target.value)} />
+                    <DurationInput item={x} onChange={(min) => actions.updateItem('transports', i, 'duration', min)} />
                   </td>
                   <td data-label="Custo">
                     <MoneyInput value={getTransportCost(x)} onChange={(v) => actions.updateItem('transports', i, 'cost', v)} />
                   </td>
                   <td data-label="Status">
-                    <StatusSelect value={x.status} onChange={(v) => actions.updateItem('transports', i, 'status', v)} />
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', i, 'status', v)} />
                   </td>
                   <td data-label="Período"><span className="badge">{periodByTime(x.time)}</span></td>
                   <td data-label="Observações">

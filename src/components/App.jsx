@@ -41,6 +41,7 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
   const [modal, setModal] = useState(null); // 'versions' | 'share' | 'clear' | 'diag' | null
   const [menuOpen, setMenuOpen] = useState(false);
   const fileRef = useRef(null);
+  const navRef = useRef(null);
   const ActiveComponent = TABS.find((t) => t[0] === active)[3];
   const title = tripName || state.settings.title || 'Planejamento da Viagem';
   const activeTrip = trips.find((t) => t.id === activeTripId);
@@ -52,6 +53,12 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+
+  // Mantém a aba ativa visível na navegação mobile (item 4.7)
+  useEffect(() => {
+    const el = navRef.current?.querySelector('button.active');
+    if (el) el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [active]);
 
   const exportJSON = () => {
     try {
@@ -92,11 +99,14 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
         <div className="container">
           <h1>
             {title}
-            {dirty && <span className="dirty-dot" title="Salvando alterações…" aria-label="Salvando alterações" />}
+            <span className={`save-badge${dirty ? ' saving' : ''}`} role="status" aria-live="polite">
+              <span className="dot" aria-hidden="true" />
+              {dirty ? 'Salvando…' : 'Salvo'}
+            </span>
           </h1>
           <p className="subtitle">{state.settings.subtitle}</p>
           <div className="topbar">
-            <nav className="nav" aria-label="Navegação principal">
+            <nav className="nav" aria-label="Navegação principal" ref={navRef}>
               {TABS.map(([id, icon, label]) => (
                 <button
                   key={id}
@@ -139,7 +149,7 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
       <main>
         <div className="container">
           <PresenceBar />
-          <ActiveComponent userEmail={user?.email} />
+          <ActiveComponent userEmail={user?.email} onNavigate={(id) => { setActive(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         </div>
       </main>
 

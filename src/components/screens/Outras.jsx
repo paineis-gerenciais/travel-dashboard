@@ -2,7 +2,7 @@ import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate, money, num } from '../../domain/format.js';
 import { datesFromCities, cityForDate } from '../../domain/dates.js';
 import { dayOther } from '../../domain/costs.js';
-import { statusRowClass, StatusSelect } from '../ui.jsx';
+import {statusRowClass, StatusSelect, StatusChip } from '../ui.jsx';
 import { useTextFilter } from '../tableHelpers.js';
 import { usePagination, Pager } from '../usePagination.jsx';
 import MoneyInput from '../MoneyInput.jsx';
@@ -37,7 +37,7 @@ export default function Outras() {
                   <td data-label="Cidade">{x.city}</td>
                   <td data-label="Despesa"><input value={x.name || ''} onChange={(e) => actions.updateItem('otherExpenses', i, 'name', e.target.value)} /></td>
                   <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('otherExpenses', i, 'cost', v)} /></td>
-                  <td data-label="Status"><StatusSelect value={x.status} onChange={(v) => actions.updateItem('otherExpenses', i, 'status', v)} /></td>
+                  <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('otherExpenses', i, 'status', v)} /></td>
                   <td><button className="small-btn danger" onClick={() => actions.deleteItem('otherExpenses', i)}>Excluir</button></td>
                 </tr>
               );

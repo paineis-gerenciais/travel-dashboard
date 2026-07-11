@@ -1,3 +1,4 @@
+import { useState } from 'react';
 // components/ui.jsx
 // Pequenos componentes reutilizáveis usados em várias telas.
 import {
@@ -71,4 +72,44 @@ export function statusRowClass(x) {
   if (x.status === 'Pago') return 'status-pago';
   if (x.status === 'Reservado') return 'status-reservado';
   return '';
+}
+
+/** Chip de status colorido e clicável (item 4.4), substitui o <select>. */
+export function StatusChip({ value = 'Planejado', onChange, options = STATUS_OPTIONS }) {
+  const [open, setOpen] = useState(false);
+  const key = String(value || 'Planejado').toLowerCase();
+  return (
+    <span className="chip-wrap">
+      <button
+        type="button"
+        className={`chip chip-${key}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {value}
+        <span aria-hidden="true" style={{ opacity: 0.6 }}>▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="chip-backdrop" onClick={() => setOpen(false)} />
+          <ul className="chip-menu" role="listbox">
+            {options.map((o) => (
+              <li key={o}>
+                <button
+                  type="button"
+                  className={`chip chip-${o.toLowerCase()}`}
+                  role="option"
+                  aria-selected={o === value}
+                  onClick={() => { onChange(o); setOpen(false); }}
+                >
+                  {o}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </span>
+  );
 }

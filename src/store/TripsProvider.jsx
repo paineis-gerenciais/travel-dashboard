@@ -31,8 +31,8 @@ export function TripsProvider({ user, children }) {
   const actions = {
     openTrip: (id) => setActiveTripId(id),
     closeTrip: () => setActiveTripId(null),
-    async createTrip(name) {
-      const id = await apiCreateTrip(user, name);
+    async createTrip(name, seedState) {
+      const id = await apiCreateTrip(user, name, seedState);
       setActiveTripId(id);
       return id;
     },
