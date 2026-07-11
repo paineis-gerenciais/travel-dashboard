@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { money, num } from '../../domain/format.js';
-import { daysBetween, calendarDays, mainCities, uniqueCities } from '../../domain/dates.js';
+import { daysBetween, calendarDays, mainCities, uniqueCities, validateCityCoverage } from '../../domain/dates.js';
+import { fmtDate } from '../../domain/format.js';
 import { totals } from '../../domain/costs.js';
 import {Kpi, StatusSelect, StatusChip } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
@@ -12,6 +13,8 @@ export default function Cidades() {
   const totalNights = state.cities.reduce((s, c) => s + daysBetween(c.start, c.end), 0);
   const main = mainCities(state);
   const t = totals(state);
+  const coverage = validateCityCoverage(state);
+  const hasIssues = coverage.overlaps.length > 0 || coverage.gaps.length > 0;
 
   return (
     <section>
@@ -23,6 +26,25 @@ export default function Cidades() {
         <Kpi label="Hospedagem total" value={money(t.lodging)} />
       </div>
       <br />
+
+      {hasIssues && (
+        <div className="card" style={{ borderLeft: '5px solid var(--warn)', marginBottom: 14 }} role="alert">
+          <h3>⚠️ Verificação de datas</h3>
+          {coverage.gaps.length > 0 && (
+            <p style={{ margin: '4px 0' }}>
+              <b>Dias sem cidade:</b> {coverage.gaps.map(fmtDate).join(', ')}. Há dias dentro do
+              período da viagem sem nenhuma cidade responsável.
+            </p>
+          )}
+          {coverage.overlaps.length > 0 && (
+            <p style={{ margin: '4px 0' }}>
+              <b>Dias em duas cidades:</b>{' '}
+              {coverage.overlaps.map((o) => `${fmtDate(o.date)} (${o.cities.join(' e ')})`).join('; ')}.
+              Isso é diferente do check-out/check-in no mesmo dia — parece sobreposição de datas.
+            </p>
+          )}
+        </div>
+      )}
       <div className="toolbar">
         <button onClick={() => actions.addCity()}>Adicionar cidade</button>
       </div>
@@ -103,6 +125,14 @@ export default function Cidades() {
                       value={c.hotel || ''}
                       onChange={(e) => actions.setCityField(i, 'hotel', e.target.value)}
                     />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!c.breakfastIncluded}
+                      onChange={(e) => actions.setCityField(i, 'breakfastIncluded', e.target.checked)}
+                    />
+                    Café da manhã incluso
                   </label>
                   <div className="grid grid2">
                     <label>

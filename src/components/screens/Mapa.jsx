@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate } from '../../domain/format.js';
-import { allPlanningDates, inferCityForDate } from '../../domain/dates.js';
+import { allPlanningDates, inferCityForDate, tripDayFlow } from '../../domain/dates.js';
 import {
   getTransportDate,
   getTransportOrigin,
@@ -54,7 +54,11 @@ export default function Mapa() {
           {dates.map((d) => {
             const pts = dayMapPoints(state, d.date);
             const cityLabel = d.city || inferCityForDate(state, d.date) || '';
-            const title = fmtDate(d.date) + ' — ' + cityLabel;
+            const flow = tripDayFlow(state, d.date);
+            const flowLabel = flow.from && flow.to && flow.from !== flow.to
+              ? flow.from + ' → ' + flow.to
+              : (cityLabel || flow.to || flow.from);
+            const title = fmtDate(d.date) + ' — ' + flowLabel;
             return (
               <div className="card map-card" key={d.date}>
                 <h3>{title}</h3>

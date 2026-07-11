@@ -1,6 +1,6 @@
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate } from '../../domain/format.js';
-import { allPlanningDates, inferCityForDate, periodByTime } from '../../domain/dates.js';
+import { allPlanningDates, inferCityForDate, periodByTime, tripDayFlow } from '../../domain/dates.js';
 import { minutesToLabel } from '../../domain/transport.js';
 import {
   getTransportDate,
@@ -35,10 +35,14 @@ export default function Roteiro({ onNavigate }) {
         dates.map((d) => {
           const { foods, attrs, others, trans } = dayItems(state, d.date);
           const city = d.city || inferCityForDate(state, d.date) || '';
+          const flow = tripDayFlow(state, d.date);
+          const flowLabel = flow.from && flow.to && flow.from !== flow.to
+            ? `${flow.from} → ${flow.to}`
+            : (city || flow.to || flow.from);
           return (
             <div className="route-day" key={d.date}>
               <h3>
-                {fmtDate(d.date)} — {city}
+                {fmtDate(d.date)} — {flowLabel}
               </h3>
               <div className="route-grid">
                 <div className="route-box">

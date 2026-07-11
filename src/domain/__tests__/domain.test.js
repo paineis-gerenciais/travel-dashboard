@@ -17,6 +17,10 @@ import {
   mainCities,
   autoTitle,
   uniqueCities,
+  tripBounds,
+  tripDayFlow,
+  validateCityCoverage,
+  HOME,
 } from '../dates.js';
 import {
   isCanceled,
@@ -158,20 +162,120 @@ describe('checklistStats', () => {
   });
 });
 
-/* ---------- ensureGenerated ---------- */
+/* ---------- ensureGenerated (Fase 4) ---------- */
 describe('ensureGenerated', () => {
-  it('gera 5 refeições + 1 atração + 1 outra por data nova, sem duplicar', () => {
+  it('NÃO pré-gera refeições vazias; gera 1 atração + 1 outra por data', () => {
     const state = normalizeState({
       cities: [{ id: 'a', city: 'Sevilha', start: '2026-04-01', end: '2026-04-03' }],
     });
     ensureGenerated(state);
-    // 2 datas * 5 refeições
-    expect(state.foodItems.length).toBe(10);
+    expect(state.foodItems.length).toBe(0); // item 4.4
     expect(state.attractions.length).toBe(2);
     expect(state.otherExpenses.length).toBe(2);
-    // rodar de novo não duplica
     ensureGenerated(state);
-    expect(state.foodItems.length).toBe(10);
+    expect(state.attractions.length).toBe(2); // não duplica
+  });
+
+  it('café da manhã automático: cria com o hotel, remove ao desmarcar, mantém se editado', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Porto', start: '2026-05-01', end: '2026-05-03', hotel: 'Pousada', breakfastIncluded: true }],
+    });
+    ensureGenerated(state);
+    const cafes = state.foodItems.filter((x) => x.autoBreakfast);
+    expect(cafes.length).toBe(2); // uma por noite
+    expect(cafes[0].place).toBe('Pousada');
+
+    // usuário edita uma -> vira manual (autoBreakfast some)
+    state.foodItems.find((x) => x.autoBreakfast).autoBreakfast = false;
+    // desmarca o café da cidade
+    state.cities[0].breakfastIncluded = false;
+    ensureGenerated(state);
+    // a não-editada foi removida; a editada permaneceu
+    expect(state.foodItems.filter((x) => x.autoBreakfast).length).toBe(0);
+    expect(state.foodItems.length).toBe(1);
+  });
+
+  it('cria 2 transportes de/para Casa com datas nas pontas da viagem', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04' },
+        { id: 'b', city: 'Porto', start: '2026-06-04', end: '2026-06-07' },
+      ],
+    });
+    ensureGenerated(state);
+    const out = state.transports.find((x) => x.autoHome === 'out');
+    const ret = state.transports.find((x) => x.autoHome === 'return');
+    expect(out.originPlace).toBe(HOME);
+    expect(out.date).toBe('2026-06-01');
+    expect(out.destCity).toBe('Lisboa');
+    expect(ret.destPlace).toBe(HOME);
+    expect(ret.date).toBe('2026-06-07');
+    expect(ret.originCity).toBe('Porto');
+    // regenerar não duplica
+    ensureGenerated(state);
+    expect(state.transports.filter((x) => x.autoHome).length).toBe(2);
+  });
+});
+
+/* ---------- Fase 4: fluxo de dia e validação de cobertura ---------- */
+describe('tripBounds e tripDayFlow', () => {
+  const state = normalizeState({
+    cities: [
+      { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04' },
+      { id: 'b', city: 'Porto', start: '2026-06-04', end: '2026-06-07' },
+    ],
+  });
+  it('tripBounds acha primeiro/último dia e cidades', () => {
+    const b = tripBounds(state);
+    expect(b.firstDay).toBe('2026-06-01');
+    expect(b.lastDay).toBe('2026-06-07');
+    expect(b.firstCity.city).toBe('Lisboa');
+    expect(b.lastCity.city).toBe('Porto');
+  });
+  it('primeiro dia vem de Casa; último dia vai para Casa', () => {
+    expect(tripDayFlow(state, '2026-06-01')).toEqual({ from: HOME, to: 'Lisboa' });
+    expect(tripDayFlow(state, '2026-06-07')).toEqual({ from: 'Porto', to: HOME });
+  });
+  it('dia de check-out/check-in mostra as duas cidades', () => {
+    expect(tripDayFlow(state, '2026-06-04')).toEqual({ from: 'Lisboa', to: 'Porto' });
+  });
+  it('dia normal fica na mesma cidade', () => {
+    expect(tripDayFlow(state, '2026-06-02')).toEqual({ from: 'Lisboa', to: 'Lisboa' });
+  });
+});
+
+describe('validateCityCoverage', () => {
+  it('não acusa nada em check-out/check-in no mesmo dia', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04' },
+        { id: 'b', city: 'Porto', start: '2026-06-04', end: '2026-06-07' },
+      ],
+    });
+    const r = validateCityCoverage(state);
+    expect(r.overlaps.length).toBe(0);
+    expect(r.gaps.length).toBe(0);
+  });
+  it('acusa buraco quando falta cidade num dia', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-03' },
+        { id: 'b', city: 'Porto', start: '2026-06-05', end: '2026-06-07' },
+      ],
+    });
+    const r = validateCityCoverage(state);
+    expect(r.gaps).toContain('2026-06-03');
+    expect(r.gaps).toContain('2026-06-04');
+  });
+  it('acusa sobreposição real (duas cidades no mesmo dia)', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-05' },
+        { id: 'b', city: 'Porto', start: '2026-06-03', end: '2026-06-07' },
+      ],
+    });
+    const r = validateCityCoverage(state);
+    expect(r.overlaps.length).toBeGreaterThan(0);
   });
 });
 

@@ -150,3 +150,67 @@ export function calendarDays(c) {
   }
   return arr;
 }
+
+/** Rótulo do ponto de partida/chegada implícito da viagem (Fase 4, item 4.5). */
+export const HOME = 'Casa';
+
+/** Limites da viagem: primeiro/último dia e primeira/última cidade reais. */
+export function tripBounds(state) {
+  const real = state.cities.filter((c) => c.start && c.end);
+  if (real.length === 0) return null;
+  const starts = real.map((c) => c.start).sort();
+  const ends = real.map((c) => c.end).sort();
+  const firstDay = starts[0];
+  const lastDay = ends[ends.length - 1];
+  const firstCity = real.slice().sort((a, b) => a.start.localeCompare(b.start))[0] || null;
+  const lastCity = real.slice().sort((a, b) => a.end.localeCompare(b.end)).pop() || null;
+  return { firstDay, lastDay, firstCity, lastCity };
+}
+
+/**
+ * Fluxo de um dia: de onde começa e onde termina (itens 4.1 e 4.5).
+ * - Dia de check-out A / check-in B: { from: A, to: B }.
+ * - Primeiro dia da viagem: { from: 'Casa', to: primeira cidade }.
+ * - Último dia (check-out final): { from: última cidade, to: 'Casa' }.
+ * - Dia normal (mesma cidade o dia todo): { from: C, to: C }.
+ * É só para EXIBIÇÃO (Roteiro/Mapa); não afeta cálculo de custo.
+ */
+export function tripDayFlow(state, date) {
+  const b = tripBounds(state);
+  if (!b) return { from: '', to: '' };
+  const real = state.cities.filter((c) => c.start && c.end);
+  const hosting = real.find((c) => date >= c.start && date < c.end) || null;
+  const checkout = real.find((c) => c.end === date) || null;
+  if (date === b.firstDay) {
+    return { from: HOME, to: hosting ? hosting.city : b.firstCity ? b.firstCity.city : '' };
+  }
+  if (date === b.lastDay) {
+    return { from: checkout ? checkout.city : b.lastCity ? b.lastCity.city : '', to: HOME };
+  }
+  if (checkout && hosting && checkout.city !== hosting.city) {
+    return { from: checkout.city, to: hosting.city };
+  }
+  const c = hosting ? hosting.city : checkout ? checkout.city : '';
+  return { from: c, to: c };
+}
+
+/**
+ * Verifica a cobertura de datas por cidade (item 4.2). Retorna:
+ * - overlaps: dias cobertos por 2+ cidades ao mesmo tempo (erro real; o padrão
+ *   check-out/check-in NÃO conta, pois o intervalo é [start, end) exclusivo).
+ * - gaps: dias dentro do período da viagem sem nenhuma cidade responsável.
+ */
+export function validateCityCoverage(state) {
+  const real = state.cities.filter((c) => c.start && c.end);
+  const overlaps = [];
+  const gaps = [];
+  if (real.length === 0) return { overlaps, gaps };
+  const b = tripBounds(state);
+  for (let d = new Date(b.firstDay + 'T00:00'); d < new Date(b.lastDay + 'T00:00'); d.setDate(d.getDate() + 1)) {
+    const iso = d.toISOString().slice(0, 10);
+    const hosting = real.filter((c) => iso >= c.start && iso < c.end);
+    if (hosting.length === 0) gaps.push(iso);
+    else if (hosting.length > 1) overlaps.push({ date: iso, cities: hosting.map((c) => c.city) });
+  }
+  return { overlaps, gaps };
+}

@@ -8,15 +8,15 @@ import { useTextFilter, dateOptions } from '../tableHelpers.js';
 import { usePagination, Pager } from '../usePagination.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 
-const isEmpty = (x) => !(x.place && x.place.trim()) && num(x.cost) === 0;
+const isEmpty = (x) => !x.autoBreakfast && !(x.place && x.place.trim()) && num(x.cost) === 0;
 
 export default function Alimentacao() {
   const { state, actions } = useTrip();
   const { query, setQuery, filter } = useTextFilter();
   const [addDate, setAddDate] = useState('');
-  const [hideEmpty, setHideEmpty] = useState(true); // item 4.1: ocultar vazias por padrão
   const opts = dateOptions(state);
 
+  // Agrupa refeições por dia (item 4.4: não há mais linhas vazias pré-geradas).
   const sorted = [...state.foodItems].sort(
     (a, b) => a.date.localeCompare(b.date) || foodOrder(a.type) - foodOrder(b.type)
   );
@@ -25,8 +25,12 @@ export default function Alimentacao() {
     (grouped[x.date] ||= []).push(x)
   );
 
-  const dayKeys = Object.keys(grouped).sort();
+  // Lista de dias = união dos dias de cidade + dias que já têm refeição.
+  const dayset = new Set([...datesFromCities(state).map((d) => d.date), ...Object.keys(grouped)]);
+  const dayKeys = [...dayset].sort();
   const { paged: pagedDays, ...pag } = usePagination(dayKeys, 15);
+
+  const emptyCount = state.foodItems.filter(isEmpty).length;
 
   return (
     <section>
@@ -40,10 +44,16 @@ export default function Alimentacao() {
         <button onClick={() => addDate && actions.addFoodItem(addDate, cityForDate(state, addDate))}>
           Adicionar linha na data
         </button>
-        <button className={hideEmpty ? 'active-toggle' : 'ghost'} onClick={() => setHideEmpty((v) => !v)}>
-          {hideEmpty ? 'Mostrando só preenchidas' : 'Mostrando todas'}
-        </button>
+        {emptyCount > 0 && (
+          <button className="ghost" onClick={() => actions.removeEmptyFood()}>
+            Remover {emptyCount} refeição(ões) vazia(s)
+          </button>
+        )}
       </div>
+      <p className="hint">
+        As refeições não são mais criadas em branco: use <b>+ item</b> em cada dia. Cidades com
+        "café da manhã incluso" ganham a linha de café automaticamente.
+      </p>
       <div className="table-wrap">
         <table>
           <thead>
@@ -51,48 +61,43 @@ export default function Alimentacao() {
           </thead>
           <tbody>
             {pagedDays.map((date) => {
-              const arr = grouped[date];
-              const filled = arr.filter((x) => !isEmpty(x));
-              const visible = hideEmpty ? filled : arr;
+              const arr = grouped[date] || [];
               const total = arr.reduce((s, x) => s + activeCost(x), 0);
-              const city = arr[0]?.city;
+              const cityLabel = arr[0]?.city || cityForDate(state, date);
 
-              // Dia sem nada preenchido, com ocultar ligado: mostra placeholder do dia.
-              if (visible.length === 0) {
+              if (arr.length === 0) {
                 return (
                   <tr key={date}>
                     <td data-label="Data">
                       {fmtDate(date)}<br />
-                      <small className="muted">0 de {arr.length} preenchidas</small><br />
                       <button className="small-btn ghost" onClick={() => actions.addFoodItem(date, cityForDate(state, date))}>+ item</button>
                     </td>
-                    <td data-label="Cidade">{city}</td>
-                    <td data-label="" colSpan={4}><span className="muted">Nenhuma refeição preenchida neste dia.</span></td>
-                    <td data-label="Total do dia" className="total-cell">{money(total)}</td>
+                    <td data-label="Cidade">{cityLabel}</td>
+                    <td data-label="" colSpan={4}><span className="muted">Sem refeições neste dia.</span></td>
+                    <td data-label="Total do dia" className="total-cell">{money(0)}</td>
                     <td></td>
                   </tr>
                 );
               }
 
-              return visible.map((x, idx) => {
+              return arr.map((x, idx) => {
                 const i = state.foodItems.indexOf(x);
                 return (
                   <tr className={statusRowClass(x)} key={x.id}>
                     {idx === 0 && (
                       <>
-                        <td data-label="Data" rowSpan={visible.length}>
+                        <td data-label="Data" rowSpan={arr.length}>
                           {fmtDate(date)}<br />
-                          <small className="muted">{filled.length} de {arr.length} preenchidas</small><br />
                           <button className="small-btn ghost" onClick={() => actions.addFoodItem(date, cityForDate(state, date))}>+ item</button>
                         </td>
-                        <td data-label="Cidade" rowSpan={visible.length}>{x.city}</td>
+                        <td data-label="Cidade" rowSpan={arr.length}>{x.city}</td>
                       </>
                     )}
                     <td data-label="Tipo"><input value={x.type} onChange={(e) => actions.updateItem('foodItems', i, 'type', e.target.value)} /></td>
                     <td data-label="Restaurante/local"><input value={x.place || ''} onChange={(e) => actions.updateItem('foodItems', i, 'place', e.target.value)} /></td>
                     <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('foodItems', i, 'cost', v)} /></td>
                     <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', i, 'status', v)} /></td>
-                    {idx === 0 && <td data-label="Total do dia" rowSpan={visible.length} className="total-cell">{money(total)}</td>}
+                    {idx === 0 && <td data-label="Total do dia" rowSpan={arr.length} className="total-cell">{money(total)}</td>}
                     <td><button className="small-btn danger" onClick={() => actions.deleteItem('foodItems', i)}>Excluir</button></td>
                   </tr>
                 );
