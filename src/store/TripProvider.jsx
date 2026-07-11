@@ -125,11 +125,15 @@ export function TripProvider({ tripId, user, children }) {
         if (!item) return;
         item[key] = key === 'cost' || key === 'nightly' ? num(value) : value;
         if (key === 'time') item.period = periodByTime(value);
+        // item 4.3: editar a linha de café automático "adota" ela (vira manual)
+        if (arrName === 'foodItems' && item.autoBreakfast && ['place', 'cost', 'type', 'status'].includes(key)) {
+          item.autoBreakfast = false;
+        }
       });
     },
     deleteItem(arrName, index) { mutate((s) => s[arrName].splice(index, 1)); },
     addCity() {
-      mutate((s) => s.cities.push({ id: uid(), city: '', emoji: '📍', start: '', end: '', hotel: '', nightly: 0, status: 'Planejado', notes: '' }));
+      mutate((s) => s.cities.push({ id: uid(), city: '', emoji: '📍', start: '', end: '', hotel: '', nightly: 0, status: 'Planejado', notes: '', breakfastIncluded: false }));
     },
     setCityField(index, key, value) {
       mutate((s) => { const c = s.cities[index]; if (!c) return; c[key] = key === 'nightly' ? num(value) : value; });
@@ -157,6 +161,12 @@ export function TripProvider({ tripId, user, children }) {
       mutate((s) => s.transports.push({ id: uid(), date: firstDate || '', time: '09:00', originCity: '', originPlace: '', destCity: '', destPlace: '', mode: '', duration: '', cost: 0, status: 'Planejado', notes: '' }));
     },
     addFoodItem(date, city) { mutate((s) => s.foodItems.push({ id: uid(), date, city, type: 'Outros', place: '', cost: 0, status: 'Planejado' })); },
+    removeEmptyFood() {
+      // item 4.4: limpa refeições vazias legadas (sem local e custo 0), exceto café automático
+      mutate((s) => {
+        s.foodItems = s.foodItems.filter((x) => x.autoBreakfast || (x.place && x.place.trim()) || num(x.cost) > 0);
+      });
+    },
     addAttraction(date, city) { mutate((s) => s.attractions.push({ id: uid(), date, city, time: '09:00', period: 'Manhã', name: '', cost: 0, status: 'Planejado' })); },
     addOther(date, city) { mutate((s) => s.otherExpenses.push({ id: uid(), date, city, name: '', cost: 0, status: 'Planejado' })); },
     setOtherDate(index, date, city) { mutate((s) => { const o = s.otherExpenses[index]; if (!o) return; o.date = date; o.city = city; }); },
