@@ -71,6 +71,10 @@ export default function VersionsModal({ tripId, onClose }) {
           <h3>Versões salvas</h3>
           <button className="ghost" onClick={onClose}>Fechar</button>
         </div>
+        <p className="hint">
+          Seu trabalho é salvo automaticamente. <b>Versões</b> são fotos que você guarda para
+          comparar ou voltar a um ponto anterior — crie uma antes de mudanças grandes.
+        </p>
         <div className="toolbar">
           <input className="wide" placeholder="Nome da nova versão" value={name} onChange={(e) => setName(e.target.value)} />
           <button onClick={doSaveNew} disabled={busy}>Salvar nova versão</button>

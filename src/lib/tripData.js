@@ -57,14 +57,14 @@ export function subscribeTrip(tripId, cb) {
   });
 }
 
-export async function createTrip(user, name) {
+export async function createTrip(user, name, seedState) {
   const ref = doc(collection(db, 'trips'));
   const email = lower(user.email);
   await setDoc(ref, {
     ownerId: user.uid,
     ownerEmail: email,
     name: name || 'Nova viagem',
-    state: blankState(),
+    state: seedState || blankState(),
     memberUids: [user.uid],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

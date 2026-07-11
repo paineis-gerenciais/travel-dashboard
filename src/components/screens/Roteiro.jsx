@@ -1,11 +1,13 @@
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate } from '../../domain/format.js';
 import { allPlanningDates, inferCityForDate, periodByTime } from '../../domain/dates.js';
+import { minutesToLabel } from '../../domain/transport.js';
 import {
   getTransportDate,
   getTransportOrigin,
   getTransportDest,
   getTransportMode,
+  getTransportDurationMinutes,
 } from '../../domain/transport.js';
 
 function dayItems(state, date) {
@@ -16,7 +18,7 @@ function dayItems(state, date) {
   return { foods, attrs, others, trans };
 }
 
-export default function Roteiro() {
+export default function Roteiro({ onNavigate }) {
   const { state } = useTrip();
   const dates = allPlanningDates(state);
 
@@ -40,35 +42,35 @@ export default function Roteiro() {
               </h3>
               <div className="route-grid">
                 <div className="route-box">
-                  <h4>Transporte</h4>
+                  <h4><button className="linkbtn ghost small-btn" onClick={() => onNavigate && onNavigate('transporte')}>Transporte ✎</button></h4>
                   {trans.length
                     ? trans.map((x) => (
                         <div key={x.id}>
-                          {x.time} {getTransportMode(x)}: {getTransportOrigin(x)} → {getTransportDest(x)}
+                          {x.time} {getTransportMode(x)}{getTransportDurationMinutes(x) ? ` (${minutesToLabel(getTransportDurationMinutes(x))})` : ''}: {getTransportOrigin(x)} → {getTransportDest(x)}
                         </div>
                       ))
                     : <span className="muted">—</span>}
                 </div>
                 <div className="route-box">
-                  <h4>Alimentação</h4>
+                  <h4><button className="linkbtn ghost small-btn" onClick={() => onNavigate && onNavigate('alimentacao')}>Alimentação ✎</button></h4>
                   {foods.length
                     ? foods.map((x) => <div key={x.id}>{x.type}: {x.place}</div>)
                     : <span className="muted">—</span>}
                 </div>
                 <div className="route-box">
-                  <h4>Atrações</h4>
+                  <h4><button className="linkbtn ghost small-btn" onClick={() => onNavigate && onNavigate('atracoes')}>Atrações ✎</button></h4>
                   {attrs.length
                     ? attrs.map((x) => <div key={x.id}>{periodByTime(x.time)}: {x.name}</div>)
                     : <span className="muted">—</span>}
                 </div>
                 <div className="route-box">
-                  <h4>Outros</h4>
+                  <h4><button className="linkbtn ghost small-btn" onClick={() => onNavigate && onNavigate('outras')}>Outros ✎</button></h4>
                   {others.length
                     ? others.map((x) => <div key={x.id}>{x.name}</div>)
                     : <span className="muted">—</span>}
                 </div>
                 <div className="route-box">
-                  <h4>Hospedagem</h4>
+                  <h4><button className="linkbtn ghost small-btn" onClick={() => onNavigate && onNavigate('cidades')}>Hospedagem ✎</button></h4>
                   {(() => {
                     const c = state.cities.find((c) => d.date >= c.start && d.date < c.end);
                     return c && c.hotel ? <div>{c.hotel}</div> : <span className="muted">—</span>;

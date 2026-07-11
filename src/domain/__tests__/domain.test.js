@@ -29,7 +29,7 @@ import {
   paidPct,
 } from '../costs.js';
 import { ensureGenerated, deleteCityCascade } from '../generate.js';
-import { gmaps, getTransportCost } from '../transport.js';
+import { gmaps, getTransportCost, durationToMinutes, minutesToLabel } from '../transport.js';
 
 /* ---------- Formatação e parsing ---------- */
 describe('format', () => {
@@ -229,7 +229,24 @@ describe('normalizeState', () => {
   });
 });
 
-/* ---------- allPlanningDates e inferCityForDate ---------- */
+/* ---------- Duração de transporte (horas/minutos) ---------- */
+describe('duração de transporte', () => {
+  it('durationToMinutes tolera formatos legados', () => {
+    expect(durationToMinutes(150)).toBe(150);
+    expect(durationToMinutes('2:30')).toBe(150);
+    expect(durationToMinutes('2h30')).toBe(150);
+    expect(durationToMinutes('2h 30min')).toBe(150);
+    expect(durationToMinutes('1h')).toBe(60);
+    expect(durationToMinutes('45min')).toBe(45);
+    expect(durationToMinutes('')).toBe(0);
+  });
+  it('minutesToLabel formata curto', () => {
+    expect(minutesToLabel(150)).toBe('2h30');
+    expect(minutesToLabel(60)).toBe('1h');
+    expect(minutesToLabel(45)).toBe('45min');
+    expect(minutesToLabel(0)).toBe('');
+  });
+});
 describe('allPlanningDates cruza fontes', () => {
   it('inclui datas de itens fora dos intervalos de cidade', () => {
     const state = normalizeState({

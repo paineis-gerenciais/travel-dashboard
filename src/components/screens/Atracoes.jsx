@@ -2,7 +2,7 @@ import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate, money, num } from '../../domain/format.js';
 import { periodByTime, datesFromCities, cityForDate } from '../../domain/dates.js';
 import { activeCost, dayAttractions } from '../../domain/costs.js';
-import { statusRowClass, StatusSelect } from '../ui.jsx';
+import {statusRowClass, StatusSelect, StatusChip } from '../ui.jsx';
 import { useTextFilter, dateOptions } from '../tableHelpers.js';
 import { usePagination, Pager } from '../usePagination.jsx';
 import { useState } from 'react';
@@ -60,7 +60,7 @@ export default function Atracoes() {
                     <td data-label="Período"><span className="badge">{periodByTime(x.time)}</span></td>
                     <td data-label="Nome"><input value={x.name || ''} onChange={(e) => actions.updateItem('attractions', i, 'name', e.target.value)} /></td>
                     <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('attractions', i, 'cost', v)} /></td>
-                    <td data-label="Status"><StatusSelect value={x.status} onChange={(v) => actions.updateItem('attractions', i, 'status', v)} /></td>
+                    <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', i, 'status', v)} /></td>
                     {idx === 0 && <td data-label="Total do dia" rowSpan={arr.length} className="total-cell">{money(total)}</td>}
                     <td><button className="small-btn danger" onClick={() => actions.deleteItem('attractions', i)}>Excluir</button></td>
                   </tr>

@@ -3,7 +3,7 @@ import { useTrip } from '../../store/TripProvider.jsx';
 import { money, num } from '../../domain/format.js';
 import { daysBetween, calendarDays, mainCities, uniqueCities } from '../../domain/dates.js';
 import { totals } from '../../domain/costs.js';
-import { Kpi, StatusSelect } from '../ui.jsx';
+import {Kpi, StatusSelect, StatusChip } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 
 export default function Cidades() {

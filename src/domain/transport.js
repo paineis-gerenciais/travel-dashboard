@@ -54,6 +54,48 @@ export function getTransportCost(x) {
   return num(x.cost ?? x.custo ?? x.valor ?? 0);
 }
 
+/**
+ * Converte o campo de duração em minutos, tolerando os formatos legados:
+ * número (já em minutos), "2h30", "2:30", "2h 30min", "150", "1h", "45min".
+ */
+export function durationToMinutes(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return Math.max(0, Math.round(v));
+  const s = String(v).trim().toLowerCase();
+  // "2:30"
+  let m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  // "2h30", "2h 30", "2h30min", "2h" (minutos após o h, com ou sem sufixo)
+  const hMatch = s.match(/(\d+)\s*h\s*(\d{1,2})?/);
+  const mOnly = s.match(/(\d+)\s*m(?:in)?/);
+  if (hMatch) {
+    const hh = Number(hMatch[1]);
+    let mm = hMatch[2] ? Number(hMatch[2]) : 0;
+    if (!hMatch[2] && mOnly) mm = Number(mOnly[1]); // "1h ... 30min" sem MM colado ao h
+    return hh * 60 + mm;
+  }
+  if (mOnly) return Number(mOnly[1]);
+  // só número solto -> assume minutos
+  const n = Number(s.replace(/[^\d]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Formata minutos como rótulo curto: 150 -> "2h30", 60 -> "1h", 45 -> "45min". */
+export function minutesToLabel(min) {
+  min = Math.max(0, Math.round(min || 0));
+  if (!min) return '';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h}h${String(m).padStart(2, '0')}`;
+  if (h) return `${h}h`;
+  return `${m}min`;
+}
+
+/** Duração de um transporte já em minutos (a partir do campo bruto). */
+export function getTransportDurationMinutes(x) {
+  return durationToMinutes(getTransportDuration(x));
+}
+
 /** Monta uma URL do Google Maps (busca simples ou rota com waypoints). */
 export function gmaps(points) {
   points = points.map((p) => String(p || '').trim()).filter(Boolean);

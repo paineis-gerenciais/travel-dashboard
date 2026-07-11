@@ -172,3 +172,44 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.linkbtn:focus-visi
   th,td{padding:4px}
   [data-theme="dark"] *{color:#000!important;background:#fff!important}
 }
+
+/* ===== Fase 4: chips de status, dinheiro rebaixado, selo salvo ===== */
+.chip-wrap{position:relative;display:inline-block}
+.chip{border:0;border-radius:999px;padding:5px 10px;font-weight:700;font-size:var(--fs-xs);cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:none;min-height:30px}
+.chip-planejado{background:#fef3c7;color:#92400e}
+.chip-reservado{background:#dbeafe;color:#1e40af}
+.chip-pago{background:#d1fae5;color:#065f46}
+.chip-cancelado{background:#fee2e2;color:#991b1b}
+.chip-pendente{background:#f1f5f9;color:#475569}
+.chip-em\ andamento,.chip-em-andamento{background:#dbeafe;color:#1e40af}
+.chip-concluído,.chip-concluido{background:#d1fae5;color:#065f46}
+.chip:hover{transform:translateY(-1px)}
+.chip-backdrop{position:fixed;inset:0;z-index:40}
+.chip-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;margin:0;list-style:none;display:grid;gap:4px;min-width:150px}
+.chip-menu li{margin:0}
+.chip-menu .chip{width:100%;justify-content:flex-start}
+[data-theme="dark"] .chip-planejado{background:rgba(245,158,11,.18);color:#fcd34d}
+[data-theme="dark"] .chip-reservado,[data-theme="dark"] .chip-em-andamento{background:rgba(37,99,235,.2);color:#93c5fd}
+[data-theme="dark"] .chip-pago,[data-theme="dark"] .chip-concluido{background:rgba(16,185,129,.18);color:#6ee7b7}
+[data-theme="dark"] .chip-cancelado{background:rgba(239,68,68,.18);color:#fca5a5}
+[data-theme="dark"] .chip-pendente{background:#1b2740;color:#9aa7bd}
+
+/* dinheiro rebaixado nas telas de planejamento (item 4.3) */
+.money-zero{color:var(--muted);opacity:.7}
+
+/* selo de salvamento (item 4.6) */
+.save-badge{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);font-weight:700;padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;background:rgba(255,255,255,.2);color:#fff}
+.save-badge.saving{background:rgba(245,158,11,.25)}
+.save-badge .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+
+/* contraste do modo escuro nas telas mais claras (item 4.8) */
+[data-theme="dark"] [data-screen="atracoes"]{--primary:#a855f7;--primary2:#c084fc;--strong:#c084fc}
+[data-theme="dark"] [data-screen="outras"]{--primary:#94a3b8;--primary2:#cbd5e1;--strong:#cbd5e1}
+[data-theme="dark"] [data-screen="checklist"]{--primary:#fbbf24;--primary2:#fcd34d;--strong:#fcd34d}
+[data-theme="dark"] .calendar-day,[data-theme="dark"] .emoji{background:#1b2740}
+
+/* N3: tela transporte mais compacta no celular */
+@media(max-width:760px){
+  [data-screen="transporte"] td{grid-template-columns:38% 62%}
+  [data-screen="transporte"] .dur-mobile input{width:48px}
+}

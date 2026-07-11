@@ -18,6 +18,7 @@ export default function MoneyInput({ value, onChange, ...rest }) {
     <input
       type="text"
       inputMode="numeric"
+      className={(value || 0) === 0 ? 'money-zero' : undefined}
       value={display}
       onChange={handleChange}
       aria-label="Valor em reais"
