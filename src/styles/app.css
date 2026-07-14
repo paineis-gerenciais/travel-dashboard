@@ -213,3 +213,18 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.linkbtn:focus-visi
   [data-screen="transporte"] td{grid-template-columns:38% 62%}
   [data-screen="transporte"] .dur-mobile input{width:48px}
 }
+
+/* ===== Fase 5, item 5.E: paleta alternativa "minimalista" (um acento só) ===== */
+[data-palette="minimalista"] [data-screen]{
+  --bg:#f4f6fb; --primary:#2563eb; --primary2:#64748b; --line:#dde3ee; --soft:#e8ecf5; --strong:#1e3a8a;
+}
+[data-palette="minimalista"] header{
+  background: linear-gradient(135deg, #0f172a, #1e3a8a, #2563eb);
+}
+[data-theme="dark"][data-palette="minimalista"] [data-screen]{
+  --bg:#0b1220; --card:#141d33; --text:#e6edf7; --muted:#9aa7bd; --line:#27324a; --soft:#1b2740; --primary:#3b82f6; --primary2:#60a5fa; --strong:#93c5fd;
+}
+
+/* ===== Fase 5, item 5.B: timeline horizontal ===== */
+.timeline-scroll::-webkit-scrollbar{ height: 6px; }
+.timeline-scroll::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 999px; }

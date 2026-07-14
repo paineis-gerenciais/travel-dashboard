@@ -20,6 +20,7 @@ const Atracoes = lazy(() => import('./screens/Atracoes.jsx'));
 const Outras = lazy(() => import('./screens/Outras.jsx'));
 const Checklist = lazy(() => import('./screens/Checklist.jsx'));
 const Custos = lazy(() => import('./screens/Custos.jsx'));
+const PorDia = lazy(() => import('./screens/PorDia.jsx'));
 
 const TABS = [
   ['resumo', '🏠', 'Resumo', Resumo],
@@ -32,9 +33,10 @@ const TABS = [
   ['outras', '💼', 'Outras', Outras],
   ['checklist', '✅', 'Checklist', Checklist],
   ['custos', '💰', 'Custos', Custos],
+  ['pordia', '🧭', 'Por dia', PorDia],
 ];
 
-export default function App({ user, onLogout, theme, toggleTheme }) {
+export default function App({ user, onLogout, theme, toggleTheme, palette, togglePalette }) {
   const { state, tripName, dirty, actions } = useTrip();
   const { activeTripId, trips, actions: tripsActions } = useTrips();
   const [active, setActive] = useState('resumo');
@@ -138,6 +140,9 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
               <button aria-label="Alternar tema claro/escuro" onClick={toggleTheme}>
                 {theme === 'dark' ? '☀️ Claro' : '🌙 Escuro'}
               </button>
+              <button aria-label="Alternar paleta de cores" onClick={togglePalette}>
+                {palette === 'minimalista' ? '🌈 Colorido' : '⬛ Minimalista'}
+              </button>
               <button onClick={() => { setModal('diag'); closeMenu(); }}>Diagnóstico</button>
               <button className="danger" onClick={() => { setModal('clear'); closeMenu(); }}>Limpar</button>
               <button onClick={() => { closeMenu(); onLogout(); }}>Sair</button>
@@ -149,7 +154,7 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
       <main>
         <div className="container">
           <PresenceBar />
-          <ActiveComponent userEmail={user?.email} onNavigate={(id) => { setActive(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          <ActiveComponent userEmail={user?.email} tripId={activeTripId} onNavigate={(id) => { setActive(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         </div>
       </main>
 

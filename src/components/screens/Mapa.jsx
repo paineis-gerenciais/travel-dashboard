@@ -10,9 +10,10 @@ import {
   minutesToLabel,
 } from '../../domain/transport.js';
 import RouteEditorModal from '../RouteEditorModal.jsx';
+import EmbeddedMap from '../EmbeddedMap.jsx';
 
 // Pontos de um dia (hospedagem + transportes + atrações), como sugestão inicial
-// para o editor de rota.
+// para o editor de rota e para o mapa embutido.
 function dayMapPoints(state, date) {
   const pts = [];
   const city = state.cities.find((c) => date >= c.start && date < c.end);
@@ -39,13 +40,15 @@ export default function Mapa() {
   const { state } = useTrip();
   const dates = allPlanningDates(state);
   const [editing, setEditing] = useState(null);
+  const [expanded, setExpanded] = useState(null); // data do dia com mapa embutido aberto
 
   return (
     <section>
       <h2>Mapa</h2>
       <p className="hint">
-        Cada dia tem uma rota sugerida (hospedagem, transporte e atrações). Toque em <b>Rota</b> para
-        ajustar as paradas — incluir, remover ou reordenar — antes de abrir no Google Maps.
+        Cada dia tem uma rota sugerida (hospedagem, transporte e atrações). Toque em <b>Ver mapa</b>
+        para localizar os pontos num mapa embutido (OpenStreetMap), ou em <b>Rota</b> para ajustar as
+        paradas — incluir, remover ou reordenar — antes de abrir no Google Maps.
       </p>
       {dates.length === 0 ? (
         <p className="empty">Cadastre cidades, transportes e pontos do roteiro para montar rotas.</p>
@@ -59,6 +62,7 @@ export default function Mapa() {
               ? flow.from + ' → ' + flow.to
               : (cityLabel || flow.to || flow.from);
             const title = fmtDate(d.date) + ' — ' + flowLabel;
+            const isOpen = expanded === d.date;
             return (
               <div className="card map-card" key={d.date}>
                 <h3>{title}</h3>
@@ -67,11 +71,15 @@ export default function Mapa() {
                     ? pts.map((p, k) => <div className="map-point" key={k}>{p.label}</div>)
                     : <span className="muted">Sem pontos neste dia.</span>}
                 </div>
-                <div className="toolbar" style={{ marginBottom: 0 }}>
-                  <button disabled={pts.length === 0} onClick={() => setEditing({ title, points: pts })}>
+                <div className="toolbar" style={{ marginBottom: isOpen ? 10 : 0 }}>
+                  <button disabled={pts.length === 0} onClick={() => setExpanded(isOpen ? null : d.date)}>
+                    {isOpen ? 'Ocultar mapa' : 'Ver mapa'}
+                  </button>
+                  <button className="ghost" disabled={pts.length === 0} onClick={() => setEditing({ title, points: pts })}>
                     Rota
                   </button>
                 </div>
+                {isOpen && <EmbeddedMap points={pts} />}
               </div>
             );
           })}

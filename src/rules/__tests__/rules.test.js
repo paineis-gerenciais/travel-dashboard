@@ -15,7 +15,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 
 let testEnv;
 
@@ -122,5 +122,56 @@ describe('perfil de usuário', () => {
     const db = ctx(DONO).firestore();
     await assertSucceeds(setDoc(doc(db, 'users', DONO.sub), { email: DONO.email }));
     await assertFails(setDoc(doc(db, 'users', CONVIDADO.sub), { email: 'hack' }));
+  });
+});
+
+describe('comentários por item (Fase 5, item 5.F)', () => {
+  it('membro cria e lê comentários da viagem', async () => {
+    const db = ctx(DONO).firestore();
+    await assertSucceeds(
+      setDoc(doc(collection(db, 'trips', 'trip1', 'comments')), {
+        itemKey: 'foodItems:x', text: 'oi', authorUid: DONO.sub, authorName: 'Dono',
+      })
+    );
+    await assertSucceeds(getDocs(collection(db, 'trips', 'trip1', 'comments')));
+  });
+
+  it('estranho NÃO lê nem cria comentários de uma viagem alheia', async () => {
+    const db = ctx(ESTRANHO).firestore();
+    await assertFails(getDocs(collection(db, 'trips', 'trip1', 'comments')));
+    await assertFails(
+      setDoc(doc(collection(db, 'trips', 'trip1', 'comments')), {
+        itemKey: 'foodItems:x', text: 'invasão', authorUid: ESTRANHO.sub, authorName: 'Estranho',
+      })
+    );
+  });
+
+  it('só o autor apaga o próprio comentário', async () => {
+    await testEnv.withSecurityRulesDisabled(async (admin) => {
+      const db = admin.firestore();
+      await setDoc(doc(db, 'trips', 'trip1', 'comments', 'c1'), {
+        itemKey: 'foodItems:x', text: 'do dono', authorUid: DONO.sub, authorName: 'Dono',
+      });
+    });
+    await assertFails(deleteDoc(doc(ctx(CONVIDADO).firestore(), 'trips', 'trip1', 'comments', 'c1')));
+    await assertSucceeds(deleteDoc(doc(ctx(DONO).firestore(), 'trips', 'trip1', 'comments', 'c1')));
+  });
+});
+
+describe('feed de atividade (Fase 5, item 5.F)', () => {
+  it('membro cria e lê eventos de atividade', async () => {
+    const db = ctx(DONO).firestore();
+    await assertSucceeds(
+      setDoc(doc(collection(db, 'trips', 'trip1', 'activity')), { text: 'fez algo', authorUid: DONO.sub, authorName: 'Dono' })
+    );
+    await assertSucceeds(getDocs(collection(db, 'trips', 'trip1', 'activity')));
+  });
+
+  it('estranho NÃO lê nem cria eventos de atividade de viagem alheia', async () => {
+    const db = ctx(ESTRANHO).firestore();
+    await assertFails(getDocs(collection(db, 'trips', 'trip1', 'activity')));
+    await assertFails(
+      setDoc(doc(collection(db, 'trips', 'trip1', 'activity')), { text: 'espião', authorUid: ESTRANHO.sub, authorName: 'Estranho' })
+    );
   });
 });

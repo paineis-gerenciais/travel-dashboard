@@ -190,7 +190,65 @@ export async function revokeMember(tripId, uid) {
   try { await deleteDoc(doc(db, 'trips', tripId, 'members', uid)); } catch (e) { console.error(e); }
 }
 
-/* ---------- Presença ---------- */
+/* ---------- Comentários por item (Fase 5, item 5.F) ---------- */
+// Coleção própria trips/{tripId}/comments, isolada por viagem como o resto do
+// app. Cada comentário se refere a um item por `itemKey` (ex.: "foodItems:abc").
+export function subscribeComments(tripId, itemKey, cb) {
+  const q = query(collection(db, 'trips', tripId, 'comments'), where('itemKey', '==', itemKey));
+  return onSnapshot(q, (snap) => {
+    cb(
+      snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.createdAtMs || 0) - (b.createdAtMs || 0))
+    );
+  });
+}
+
+export async function addComment(tripId, itemKey, user, text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return;
+  await setDoc(doc(collection(db, 'trips', tripId, 'comments')), {
+    itemKey,
+    text: trimmed,
+    authorUid: user.uid,
+    authorName: user.displayName || user.email || 'Alguém',
+    createdAtMs: Date.now(),
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function deleteComment(tripId, commentId) {
+  await deleteDoc(doc(db, 'trips', tripId, 'comments', commentId));
+}
+
+/* ---------- Feed de atividade (Fase 5, item 5.F) ---------- */
+// Coleção própria trips/{tripId}/activity — eventos discretos e significativos
+// (não cada tecla digitada): cidade criada/removida, item marcado como Pago,
+// item do checklist concluído. Alimenta um resumo de "o que mudou" na viagem.
+export async function logActivity(tripId, user, text) {
+  try {
+    await setDoc(doc(collection(db, 'trips', tripId, 'activity')), {
+      text,
+      authorUid: user.uid,
+      authorName: user.displayName || user.email || 'Alguém',
+      createdAtMs: Date.now(),
+      createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error('Falha ao registrar atividade', e);
+  }
+}
+
+export function subscribeActivity(tripId, cb, max = 15) {
+  return onSnapshot(collection(db, 'trips', tripId, 'activity'), (snap) => {
+    cb(
+      snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0))
+        .slice(0, max)
+    );
+  });
+}
 export async function heartbeatPresence(tripId, user) {
   await setDoc(
     doc(db, 'trips', tripId, 'presence', user.uid),

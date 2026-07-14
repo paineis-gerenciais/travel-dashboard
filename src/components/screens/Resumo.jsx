@@ -4,8 +4,9 @@ import { totals, checklistStats, paidPct } from '../../domain/costs.js';
 import { allPlanningDates, uniqueCities } from '../../domain/dates.js';
 import { SUBTITLES } from '../../domain/state.js';
 import { Kpi } from '../ui.jsx';
+import ActivityFeed from '../ActivityFeed.jsx';
 
-export default function Resumo({ userEmail }) {
+export default function Resumo({ userEmail, tripId }) {
   const { state, actions } = useTrip();
   const t = totals(state);
   const dates = allPlanningDates(state);
@@ -82,6 +83,8 @@ export default function Resumo({ userEmail }) {
           </p>
         )}
       </div>
+      <br />
+      <ActivityFeed tripId={tripId} />
     </section>
   );
 }

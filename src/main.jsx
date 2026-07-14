@@ -21,14 +21,14 @@ function Loading({ text = 'Carregando…' }) {
   );
 }
 
-function Shell({ user, onLogout, theme, toggleTheme }) {
+function Shell({ user, onLogout, theme, toggleTheme, palette, togglePalette }) {
   const { activeTripId, ready } = useTrips();
   if (!ready) return <Loading text="Carregando suas viagens…" />;
-  if (!activeTripId) return <TripPicker onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />;
+  if (!activeTripId) return <TripPicker onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} palette={palette} togglePalette={togglePalette} />;
   return (
     <TripProvider tripId={activeTripId} user={user}>
       <Suspense fallback={<Loading text="Abrindo viagem…" />}>
-        <App user={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />
+        <App user={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} palette={palette} togglePalette={togglePalette} />
       </Suspense>
     </TripProvider>
   );
@@ -36,7 +36,7 @@ function Shell({ user, onLogout, theme, toggleTheme }) {
 
 function Root() {
   const { user, loading, login, logout } = useAuth();
-  const { theme, toggle } = useTheme();
+  const { theme, toggle, palette, togglePalette } = useTheme();
   const [loginError, setLoginError] = useState('');
 
   if (loading) return <Loading />;
@@ -53,7 +53,7 @@ function Root() {
   }
   return (
     <TripsProvider user={user}>
-      <Shell user={user} onLogout={logout} theme={theme} toggleTheme={toggle} />
+      <Shell user={user} onLogout={logout} theme={theme} toggleTheme={toggle} palette={palette} togglePalette={togglePalette} />
     </TripsProvider>
   );
 }

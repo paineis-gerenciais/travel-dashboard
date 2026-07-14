@@ -20,7 +20,7 @@ function templateState() {
   return s;
 }
 
-export default function TripPicker({ onLogout, theme, toggleTheme }) {
+export default function TripPicker({ onLogout, theme, toggleTheme, palette, togglePalette }) {
   const { trips, user, actions } = useTrips();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,6 +48,9 @@ export default function TripPicker({ onLogout, theme, toggleTheme }) {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button aria-label="Alternar tema claro/escuro" onClick={toggleTheme}>
                 {theme === 'dark' ? '☀️ Claro' : '🌙 Escuro'}
+              </button>
+              <button aria-label="Alternar paleta de cores" onClick={togglePalette}>
+                {palette === 'minimalista' ? '🌈 Colorido' : '⬛ Minimalista'}
               </button>
               <button onClick={onLogout}>Sair</button>
             </div>
