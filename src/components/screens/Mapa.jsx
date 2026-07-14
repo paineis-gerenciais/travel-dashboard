@@ -3,17 +3,12 @@ import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate } from '../../domain/format.js';
 import { allPlanningDates, inferCityForDate, tripDayFlow } from '../../domain/dates.js';
 import {
-  getTransportDate,
-  getTransportOrigin,
-  getTransportDest,
-  getTransportDurationMinutes,
-  minutesToLabel,
+  getTransportDate, getTransportOrigin, getTransportDest,
+  getTransportDurationMinutes, minutesToLabel,
 } from '../../domain/transport.js';
+import { Row, EmptyState, Sheet } from '../ui.jsx';
 import RouteEditorModal from '../RouteEditorModal.jsx';
-import EmbeddedMap from '../EmbeddedMap.jsx';
 
-// Pontos de um dia (hospedagem + transportes + atrações), como sugestão inicial
-// para o editor de rota e para o mapa embutido.
 function dayMapPoints(state, date) {
   const pts = [];
   const city = state.cities.find((c) => date >= c.start && date < c.end);
@@ -36,24 +31,34 @@ function dayMapPoints(state, date) {
   return pts.map((p) => ({ ...p, query: String(p.query).trim() }));
 }
 
+/** MAPA — rotas por dia, abertas no Google Maps. Sem tabela, sem mapa embutido. */
 export default function Mapa() {
   const { state } = useTrip();
   const dates = allPlanningDates(state);
   const [editing, setEditing] = useState(null);
-  const [expanded, setExpanded] = useState(null); // data do dia com mapa embutido aberto
+
+  if (dates.length === 0) {
+    return (
+      <div className="screen">
+        <div className="container">
+          <h2>Mapa</h2>
+          <EmptyState title="Sem rotas ainda">
+            Cadastre cidades e monte os dias — as rotas aparecem aqui.
+          </EmptyState>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <section>
-      <h2>Mapa</h2>
-      <p className="hint">
-        Cada dia tem uma rota sugerida (hospedagem, transporte e atrações). Toque em <b>Ver mapa</b>
-        para localizar os pontos num mapa embutido (OpenStreetMap), ou em <b>Rota</b> para ajustar as
-        paradas — incluir, remover ou reordenar — antes de abrir no Google Maps.
-      </p>
-      {dates.length === 0 ? (
-        <p className="empty">Cadastre cidades, transportes e pontos do roteiro para montar rotas.</p>
-      ) : (
-        <div className="grid grid2">
+    <div className="screen">
+      <div className="container stack">
+        <h2>Mapa</h2>
+        <p className="small t2" style={{ margin: 0 }}>
+          Cada dia tem uma rota sugerida. Toque em Rota para ajustar as paradas antes de abrir no Google Maps.
+        </p>
+
+        <div className="card card-flush">
           {dates.map((d) => {
             const pts = dayMapPoints(state, d.date);
             const cityLabel = d.city || inferCityForDate(state, d.date) || '';
@@ -62,33 +67,28 @@ export default function Mapa() {
               ? flow.from + ' → ' + flow.to
               : (cityLabel || flow.to || flow.from);
             const title = fmtDate(d.date) + ' — ' + flowLabel;
-            const isOpen = expanded === d.date;
             return (
-              <div className="card map-card" key={d.date}>
-                <h3>{title}</h3>
-                <div className="map-points">
-                  {pts.length
-                    ? pts.map((p, k) => <div className="map-point" key={k}>{p.label}</div>)
-                    : <span className="muted">Sem pontos neste dia.</span>}
-                </div>
-                <div className="toolbar" style={{ marginBottom: isOpen ? 10 : 0 }}>
-                  <button disabled={pts.length === 0} onClick={() => setExpanded(isOpen ? null : d.date)}>
-                    {isOpen ? 'Ocultar mapa' : 'Ver mapa'}
-                  </button>
-                  <button className="ghost" disabled={pts.length === 0} onClick={() => setEditing({ title, points: pts })}>
+              <Row
+                key={d.date}
+                icon="🗺️"
+                title={flowLabel}
+                sub={pts.length ? `${fmtDate(d.date)} · ${pts.length} ${pts.length === 1 ? 'parada' : 'paradas'}` : `${fmtDate(d.date)} · sem paradas`}
+                value={
+                  <button className="btn-sm" disabled={pts.length === 0} onClick={() => setEditing({ title, points: pts })}>
                     Rota
                   </button>
-                </div>
-                {isOpen && <EmbeddedMap points={pts} />}
-              </div>
+                }
+              />
             );
           })}
         </div>
-      )}
+      </div>
 
       {editing && (
-        <RouteEditorModal title={editing.title} initialPoints={editing.points} onClose={() => setEditing(null)} />
+        <Sheet title={editing.title} onClose={() => setEditing(null)}>
+          <RouteEditorModal initialPoints={editing.points} />
+        </Sheet>
       )}
-    </section>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useState } from 'react';
 import { useAuth } from './store/useAuth.js';
 import { useTheme } from './store/useTheme.js';
 import { TripsProvider, useTrips } from './store/TripsProvider.jsx';
@@ -15,20 +14,20 @@ installGlobalErrorHandlers();
 
 function Loading({ text = 'Carregando…' }) {
   return (
-    <div className="login-wrap">
-      <div className="login-card"><p className="muted">{text}</p></div>
+    <div className="container screen">
+      <p className="t2">{text}</p>
     </div>
   );
 }
 
-function Shell({ user, onLogout, theme, toggleTheme, palette, togglePalette }) {
+function Shell({ user, onLogout, theme, toggleTheme }) {
   const { activeTripId, ready } = useTrips();
   if (!ready) return <Loading text="Carregando suas viagens…" />;
-  if (!activeTripId) return <TripPicker onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} palette={palette} togglePalette={togglePalette} />;
+  if (!activeTripId) return <TripPicker onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />;
   return (
     <TripProvider tripId={activeTripId} user={user}>
       <Suspense fallback={<Loading text="Abrindo viagem…" />}>
-        <App user={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} palette={palette} togglePalette={togglePalette} />
+        <App user={user} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />
       </Suspense>
     </TripProvider>
   );
@@ -36,7 +35,7 @@ function Shell({ user, onLogout, theme, toggleTheme, palette, togglePalette }) {
 
 function Root() {
   const { user, loading, login, logout } = useAuth();
-  const { theme, toggle, palette, togglePalette } = useTheme();
+  const { theme, toggle } = useTheme();
   const [loginError, setLoginError] = useState('');
 
   if (loading) return <Loading />;
@@ -53,7 +52,7 @@ function Root() {
   }
   return (
     <TripsProvider user={user}>
-      <Shell user={user} onLogout={logout} theme={theme} toggleTheme={toggle} palette={palette} togglePalette={togglePalette} />
+      <Shell user={user} onLogout={logout} theme={theme} toggleTheme={toggle} />
     </TripsProvider>
   );
 }

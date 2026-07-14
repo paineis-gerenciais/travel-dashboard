@@ -1,16 +1,18 @@
+import { useEffect, useRef } from 'react';
 import { fmtDate } from '../domain/format.js';
 
-/**
- * Rethink 5.B — linha do tempo visual. Uma faixa horizontal com um segmento
- * colorido por cidade (largura proporcional aos dias) e um marcador por dia,
- * clicável para pular direto para ele. Usa rolagem horizontal nativa do
- * navegador — no celular isso já é arrastável com o dedo (swipe) sem precisar
- * de nenhum gesto customizado.
- */
+/** Linha do tempo: um marcador por dia, agrupado por cidade. Rolagem nativa. */
 export default function Timeline({ dates, activeIndex, onSelect }) {
+  const ref = useRef(null);
+
+  // Mantém o dia ativo sempre visível.
+  useEffect(() => {
+    const el = ref.current?.querySelector('[aria-selected="true"]');
+    if (el) el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeIndex]);
+
   if (dates.length === 0) return null;
 
-  // Agrupa dias consecutivos da mesma cidade em segmentos, para colorir por cidade.
   const segments = [];
   dates.forEach((d, i) => {
     const last = segments[segments.length - 1];
@@ -19,43 +21,22 @@ export default function Timeline({ dates, activeIndex, onSelect }) {
   });
 
   return (
-    <div
-      className="timeline-scroll"
-      style={{ overflowX: 'auto', paddingBottom: 6, marginBottom: 14, WebkitOverflowScrolling: 'touch' }}
-      role="tablist"
-      aria-label="Linha do tempo da viagem"
-    >
-      <div style={{ display: 'flex', gap: 2, minWidth: 'max-content' }}>
+    <div className="timeline no-print" ref={ref} role="tablist" aria-label="Dias da viagem">
+      <div className="timeline-inner">
         {segments.map((seg, si) => (
-          <div key={si} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div
-              className="badge"
-              style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: 11, padding: '3px 8px' }}
-            >
-              {seg.city}
-            </div>
-            <div style={{ display: 'flex', gap: 3 }}>
+          <div className="timeline-seg" key={si}>
+            <span className="timeline-city">{seg.city}</span>
+            <div className="timeline-days">
               {Array.from({ length: seg.count }).map((_, k) => {
                 const i = seg.startIndex + k;
-                const isActive = i === activeIndex;
                 return (
                   <button
                     key={i}
+                    className="timeline-day"
                     role="tab"
-                    aria-selected={isActive}
+                    aria-selected={i === activeIndex}
                     aria-label={fmtDate(dates[i].date)}
                     onClick={() => onSelect(i)}
-                    style={{
-                      minWidth: 34,
-                      height: 34,
-                      padding: 0,
-                      borderRadius: 10,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: isActive ? 'var(--primary)' : 'var(--soft)',
-                      color: isActive ? '#fff' : 'var(--strong)',
-                      boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
-                    }}
                   >
                     {new Date(dates[i].date + 'T00:00').getDate()}
                   </button>

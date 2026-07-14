@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useTrips } from '../store/TripsProvider.jsx';
 import { blankState, SUBTITLES } from '../domain/state.js';
+import { Row, Sheet, EmptyState } from './ui.jsx';
 
-// Modelo de exemplo (item 4.2): 7 dias, 2 cidades, para o usuário ver o app
-// preenchido em vez de encarar o branco. As datas começam daqui a 30 dias.
 function templateState() {
   const base = new Date();
   base.setDate(base.getDate() + 30);
@@ -14,13 +13,13 @@ function templateState() {
   const s = blankState();
   s.settings.subtitle = SUBTITLES[0];
   s.cities = [
-    { id: 'tpl_a', city: 'Lisboa', emoji: '🇵🇹', start: iso(d0), end: iso(d4), hotel: 'Hotel Centro', nightly: 400, status: 'Reservado', notes: 'Exemplo — ajuste à vontade' },
-    { id: 'tpl_b', city: 'Porto', emoji: '🍷', start: iso(d4), end: iso(d7), hotel: 'Pousada Ribeira', nightly: 350, status: 'Planejado', notes: '' },
+    { id: 'tpl_a', city: 'Lisboa', emoji: '🇵🇹', start: iso(d0), end: iso(d4), hotel: 'Hotel Centro', nightly: 400, status: 'Reservado', notes: '', breakfastIncluded: true },
+    { id: 'tpl_b', city: 'Porto', emoji: '🍷', start: iso(d4), end: iso(d7), hotel: 'Pousada Ribeira', nightly: 350, status: 'Planejado', notes: '', breakfastIncluded: false },
   ];
   return s;
 }
 
-export default function TripPicker({ onLogout, theme, toggleTheme, palette, togglePalette }) {
+export default function TripPicker({ onLogout, theme, toggleTheme }) {
   const { trips, user, actions } = useTrips();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,116 +30,85 @@ export default function TripPicker({ onLogout, theme, toggleTheme, palette, togg
     try {
       await actions.createTrip(name.trim() || (seed ? 'Viagem exemplo' : 'Nova viagem'), seed);
       setName('');
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   return (
-    <div data-screen="resumo">
-      <header>
+    <>
+      <header className="appbar">
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <h1>Minhas viagens</h1>
-              <p className="subtitle">Escolha uma viagem para planejar, ou crie uma nova.</p>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button aria-label="Alternar tema claro/escuro" onClick={toggleTheme}>
-                {theme === 'dark' ? '☀️ Claro' : '🌙 Escuro'}
-              </button>
-              <button aria-label="Alternar paleta de cores" onClick={togglePalette}>
-                {palette === 'minimalista' ? '🌈 Colorido' : '⬛ Minimalista'}
-              </button>
-              <button onClick={onLogout}>Sair</button>
-            </div>
+          <h1>Minhas viagens</h1>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+            <button className="btn-ghost btn-sm" aria-label="Alternar tema" onClick={toggleTheme}>
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+            <button className="btn-ghost btn-sm" onClick={onLogout}>Sair</button>
           </div>
         </div>
       </header>
-      <main>
-        <div className="container">
-          <section>
-            <div className="toolbar">
-              <input
-                className="wide"
-                placeholder="Nome da nova viagem (ex.: Portugal 2026)"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && create()}
-              />
-              <button onClick={() => create()} disabled={busy}>Criar viagem</button>
-              <button className="ghost" onClick={() => create(templateState())} disabled={busy}>
-                Começar de um modelo (7 dias, 2 cidades)
-              </button>
-            </div>
 
-            {trips.length === 0 ? (
-              <div className="card" style={{ marginTop: 8 }}>
-                <h3>Como funciona</h3>
-                <p className="muted" style={{ margin: 0 }}>
-                  Cadastre <b>cidades com datas</b> de check-in e check-out — o app organiza o resto
-                  (roteiro, alimentação, atrações e custos) automaticamente. Quer ver preenchido
-                  antes? Toque em <b>Começar de um modelo</b> acima.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid2">
-                {trips.map((t) => {
-                  const isOwner = t.ownerId === user.uid;
-                  return (
-                    <div className="card" key={t.id}>
-                      <h3>{t.name}</h3>
-                      <p className="muted" style={{ margin: '4px 0 12px' }}>
-                        {isOwner ? '👑 Você é o dono' : `🤝 Compartilhada por ${t.ownerEmail || 'outro usuário'}`}
-                        {' · '}
-                        {t.memberUids.length} {t.memberUids.length === 1 ? 'membro' : 'membros'}
-                      </p>
-                      <div className="toolbar" style={{ marginBottom: 0 }}>
-                        <button onClick={() => actions.openTrip(t.id)}>Abrir</button>
-                        {isOwner && (
-                          <button
-                            className="ghost"
-                            onClick={() => {
-                              const novo = prompt('Novo nome da viagem:', t.name);
-                              if (novo && novo.trim()) actions.renameTrip(t.id, novo.trim());
-                            }}
-                          >
-                            Renomear
-                          </button>
-                        )}
-                        {isOwner && (
-                          <button className="danger" onClick={() => setConfirmDel(t)}>Excluir</button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+      <div className="screen">
+        <div className="container stack">
+          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+            <input
+              placeholder="Nome da viagem"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && create()}
+            />
+            <button className="btn-primary" onClick={() => create()} disabled={busy}>Criar</button>
+          </div>
+
+          {trips.length === 0 ? (
+            <EmptyState
+              title="Comece sua primeira viagem"
+              action={<button onClick={() => create(templateState())} disabled={busy}>Começar de um modelo</button>}
+            >
+              Cadastre cidades com datas e o app organiza o resto: dias, roteiro, custos e checklist.
+            </EmptyState>
+          ) : (
+            <div className="card card-flush">
+              {trips.map((t) => {
+                const isOwner = t.ownerId === user.uid;
+                return (
+                  <Row
+                    key={t.id}
+                    icon={isOwner ? '🧳' : '🤝'}
+                    title={t.name}
+                    sub={isOwner ? `Você é o dono · ${t.memberUids.length} ${t.memberUids.length === 1 ? 'membro' : 'membros'}` : `Compartilhada por ${t.ownerEmail || 'outra pessoa'}`}
+                    value={<button className="btn-sm" onClick={() => actions.openTrip(t.id)}>Abrir</button>}
+                  >
+                    {isOwner && (
+                      <>
+                        <button className="btn-ghost btn-sm" onClick={() => {
+                          const novo = prompt('Novo nome da viagem:', t.name);
+                          if (novo && novo.trim()) actions.renameTrip(t.id, novo.trim());
+                        }}>Renomear</button>
+                        <button className="btn-danger btn-sm" onClick={() => setConfirmDel(t)}>Excluir</button>
+                      </>
+                    )}
+                  </Row>
+                );
+              })}
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
       {confirmDel && (
-        <div className="modal-backdrop" onClick={() => setConfirmDel(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Excluir viagem</h3>
-              <button className="ghost" onClick={() => setConfirmDel(null)}>Fechar</button>
-            </div>
-            <p>
-              Excluir <b>{confirmDel.name}</b> apaga a viagem e todas as versões salvas dela, para
-              todos os membros. Esta ação não pode ser desfeita.
-            </p>
-            <div className="toolbar">
-              <button className="danger" onClick={async () => { await actions.deleteTrip(confirmDel.id); setConfirmDel(null); }}>
-                Excluir definitivamente
-              </button>
-              <button className="ghost" onClick={() => setConfirmDel(null)}>Cancelar</button>
-            </div>
+        <Sheet title="Excluir viagem" onClose={() => setConfirmDel(null)}>
+          <p>
+            Excluir <b>{confirmDel.name}</b> apaga a viagem e todas as versões salvas dela, para
+            todos os membros. Esta ação não pode ser desfeita.
+          </p>
+          <div className="stack-2">
+            <button className="btn-danger btn-block" onClick={async () => { await actions.deleteTrip(confirmDel.id); setConfirmDel(null); }}>
+              Excluir definitivamente
+            </button>
+            <button className="btn-ghost btn-block" onClick={() => setConfirmDel(null)}>Cancelar</button>
           </div>
-        </div>
+        </Sheet>
       )}
-    </div>
+    </>
   );
 }

@@ -1,21 +1,14 @@
 export default function Login({ onLogin, error }) {
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <div style={{ fontSize: 44, marginBottom: 8 }}>✈️</div>
-        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Planejamento da Viagem</h1>
-        <p className="muted" style={{ marginBottom: 20 }}>
-          Entre com sua conta Google para acessar suas viagens, salvas na nuvem e disponíveis
-          em qualquer dispositivo.
+    <div className="container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+      <div className="card stack" style={{ maxWidth: 380, textAlign: 'center' }}>
+        <div style={{ fontSize: 40 }} aria-hidden="true">✈️</div>
+        <h2 style={{ margin: 0 }}>Plano de viagem</h2>
+        <p className="t2" style={{ margin: 0 }}>
+          Entre com sua conta Google para planejar e compartilhar suas viagens.
         </p>
-        <button onClick={onLogin} style={{ width: '100%', justifyContent: 'center' }}>
-          Entrar com Google
-        </button>
-        {error && (
-          <p className="error" role="alert" style={{ marginTop: 12 }}>
-            {error}
-          </p>
-        )}
+        <button className="btn-primary btn-block" onClick={onLogin}>Entrar com Google</button>
+        {error && <p className="small" style={{ color: 'var(--danger)', margin: 0 }} role="alert">{error}</p>}
       </div>
     </div>
   );

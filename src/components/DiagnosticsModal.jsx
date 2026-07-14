@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { subscribeErrors, getErrors, clearErrors } from '../lib/logger.js';
+import { Row, EmptyState } from './ui.jsx';
 
-export default function DiagnosticsModal({ onClose }) {
+/** Conteúdo de "diagnóstico". Renderiza dentro de um Sheet (sem chrome próprio). */
+export default function DiagnosticsModal() {
   const [errors, setErrors] = useState(getErrors());
   useEffect(() => subscribeErrors(setErrors), []);
 
@@ -15,37 +17,21 @@ export default function DiagnosticsModal({ onClose }) {
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   };
 
+  if (errors.length === 0) {
+    return <EmptyState title="Nenhum erro registrado">Esta sessão está limpa.</EmptyState>;
+  }
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label="Diagnóstico" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h3>Diagnóstico</h3>
-          <button className="ghost" onClick={onClose}>Fechar</button>
-        </div>
-        {errors.length === 0 ? (
-          <p className="empty">Nenhum erro registrado nesta sessão. 🎉</p>
-        ) : (
-          <>
-            <div className="toolbar">
-              <button className="small-btn" onClick={exportLog}>Exportar log</button>
-              <button className="small-btn ghost" onClick={clearErrors}>Limpar</button>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Quando</th><th>Contexto</th><th>Mensagem</th></tr></thead>
-                <tbody>
-                  {errors.map((e, i) => (
-                    <tr key={i}>
-                      <td data-label="Quando">{new Date(e.time).toLocaleString('pt-BR')}</td>
-                      <td data-label="Contexto">{e.context}</td>
-                      <td data-label="Mensagem">{e.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+    <div className="stack">
+      <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+        <button className="btn-sm" onClick={exportLog}>Exportar log</button>
+        <button className="btn-ghost btn-sm" onClick={clearErrors}>Limpar</button>
+      </div>
+      <div className="card card-flush">
+        {errors.map((e, i) => (
+          <Row key={i} icon="⚠️" title={e.context} sub={e.message}
+            value={<span className="tiny t3">{new Date(e.time).toLocaleTimeString('pt-BR')}</span>} />
+        ))}
       </div>
     </div>
   );

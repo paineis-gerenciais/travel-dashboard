@@ -1,146 +1,203 @@
+import { useState } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
-import { money, num } from '../../domain/format.js';
+import { money, num, fmtDate } from '../../domain/format.js';
 import { allPlanningDates } from '../../domain/dates.js';
 import {
-  totals,
-  costRowsByView,
-  expenseStatusTotals,
-  palette,
+  totals, costRowsByView, expenseStatusTotals, paidPct, palette,
+  dayLodging, dayFood, dayAttractions, dayTransport, dayOther, dayTotal,
 } from '../../domain/costs.js';
-import { Kpi } from '../ui.jsx';
+import {
+  getTransportDate, getTransportOrigin, getTransportDest, getTransportMode,
+  getTransportDurationMinutes, minutesToLabel,
+} from '../../domain/transport.js';
+import { Row, Metric, EmptyState, Sheet, isCancelled } from '../ui.jsx';
 
-function pieBackground(rows) {
-  const total = rows.reduce((s, r) => s + num(r.value), 0) || 1;
-  let acc = 0;
-  const parts = [];
-  rows.forEach((r, i) => {
-    const deg = (num(r.value) / total) * 360;
-    parts.push(`${palette(i)} ${acc}deg ${acc + deg}deg`);
-    acc += deg;
-  });
-  return `conic-gradient(${parts.join(',') || '#e2e8f0 0deg 360deg'})`;
-}
+/**
+ * CUSTOS — o modo orçamento. Totais, distribuição e os RELATÓRIOS por categoria
+ * (Transporte, Alimentação, Atrações, Outras, Roteiro), que antes eram abas de
+ * navegação e agora são consultas: aqui se lê, não se monta. (Fases R2/R3.)
+ */
+const REPORTS = [
+  ['transporte', '🚆', 'Transporte'],
+  ['alimentacao', '🍽️', 'Alimentação'],
+  ['atracoes', '🎟️', 'Atrações'],
+  ['outras', '💼', 'Outras despesas'],
+  ['roteiro', '🗓️', 'Roteiro por dia'],
+];
 
 export default function Custos() {
   const { state, actions } = useTrip();
+  const [report, setReport] = useState(null);
   const t = totals(state);
   const dates = allPlanningDates(state);
-  const trav = Math.max(1, num(state.settings.travelers) || 1);
   const view = state.settings.costView || 'categoria';
   const rows = costRowsByView(state, view, t, dates);
-  const statusData = expenseStatusTotals(state);
-  const maxStatus = Math.max(1, ...statusData.map((s) => s.value));
-  const viewLabel = view === 'cidade' ? 'cidade' : view === 'dia' ? 'dia' : 'categoria';
+  const statusT = expenseStatusTotals(state);
+  const trav = Math.max(1, num(state.settings.travelers) || 1);
+  const maxRow = Math.max(1, ...rows.map((r) => r.value));
+
+  if (dates.length === 0 && t.total === 0) {
+    return (
+      <div className="screen">
+        <div className="container">
+          <h2>Custos</h2>
+          <EmptyState title="Sem custos ainda">
+            Os totais aparecem aqui conforme você monta os dias da viagem.
+          </EmptyState>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <section>
-      <h2>Custos</h2>
-      <div className="grid grid4">
-        <Kpi label="Total geral" value={money(t.total)} />
-        <Kpi label="Por pessoa" value={money(t.total / trav)} />
-        <Kpi label="Média por dia" value={money(t.total / (dates.length || 1))} />
-        <Kpi label="Média por pessoa/dia" value={money(t.total / (trav * (dates.length || 1)))} />
-      </div>
-      <br />
-      <div className="card">
-        <div className="toolbar no-print">
-          {['categoria', 'cidade', 'dia'].map((v) => (
-            <button
-              key={v}
-              className={view === v ? 'active-toggle' : ''}
-              onClick={() => actions.setCostView(v)}
+    <div className="screen">
+      <div className="container stack">
+        <h2>Custos</h2>
+
+        <div className="grid-2">
+          <Metric label="Total" value={money(t.total)} />
+          <Metric label="Por pessoa" value={money(t.total / trav)} />
+          <Metric label="Por dia" value={money(dates.length ? t.total / dates.length : 0)} />
+          <Metric label="Pago" value={`${paidPct(state)}%`} />
+        </div>
+
+        <div className="card stack">
+          <div className="row-between">
+            <h3 style={{ margin: 0 }}>Distribuição</h3>
+            <select
+              value={view}
+              onChange={(e) => actions.setCostView(e.target.value)}
+              style={{ width: 'auto', minWidth: 140 }}
+              aria-label="Ver custos por"
             >
-              {v[0].toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid2">
-          <div>
-            <h3>{view === 'dia' ? 'Gráfico de barras por dia' : `Gráfico de pizza por ${viewLabel}`}</h3>
-            {view === 'dia' ? (
-              <div className="status-bars">
-                {rows.map((r, i) => (
-                  <div className="status-bar-row" key={i}>
-                    <span><b>{r.name}</b></span>
-                    <div className="status-bar-track">
-                      <div className="status-bar-fill" style={{ width: Math.max(2, (num(r.value) / Math.max(1, ...rows.map((x) => num(x.value)))) * 100) + '%', background: palette(i) }} />
-                    </div>
-                    <b>{money(r.value)}</b>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="pie-wrap">
-                <div className="pie" style={{ background: pieBackground(rows) }} />
-                <div className="legend">
-                  {rows.map((r, i) => (
-                    <div key={i}>
-                      <span style={{ background: palette(i) }} />
-                      <b>{r.name}</b>: {money(r.value)} — {((num(r.value) / (t.total || 1)) * 100).toFixed(1)}%
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              <option value="categoria">Por categoria</option>
+              <option value="cidade">Por cidade</option>
+              <option value="dia">Por dia</option>
+            </select>
           </div>
-          <div>
-            <h3>Valores por {viewLabel}</h3>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>{viewLabel[0].toUpperCase() + viewLabel.slice(1)}</th><th>Valor</th><th>%</th><th>Por pessoa</th></tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i}>
-                      <td data-label={viewLabel}>{r.name}</td>
-                      <td data-label="Valor" className="total-cell">{money(r.value)}</td>
-                      <td data-label="%">{((num(r.value) / (t.total || 1)) * 100).toFixed(1)}%</td>
-                      <td data-label="Por pessoa">{money(num(r.value) / trav)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-      <br />
-      <div className="grid grid2">
-        <div className="card">
-          <h3>Gráfico de barras — status do gasto</h3>
-          <div className="status-bars">
-            {statusData.map((s) => (
-              <div className="status-bar-row" key={s.label}>
-                <span><b>{s.label}</b></span>
-                <div className="status-bar-track">
-                  <div className={`status-bar-fill status-${s.label.toLowerCase()}`} style={{ width: Math.max(2, (s.value / maxStatus) * 100) + '%' }} />
+          <div className="stack-2">
+            {rows.map((r, i) => (
+              <div key={r.label} className="stack-2" style={{ gap: 4 }}>
+                <div className="row-between">
+                  <span className="small">{r.label}</span>
+                  <span className="small num" style={{ fontWeight: 600 }}>{money(r.value)}</span>
                 </div>
-                <b>{money(s.value)}</b>
+                <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
+                  <div style={{ width: `${(r.value / maxRow) * 100}%`, height: '100%', background: palette(i), borderRadius: 'var(--r-pill)' }} />
+                </div>
               </div>
             ))}
           </div>
-          <p className="hint">Valores cancelados aparecem para controle, mas não entram no total geral.</p>
         </div>
-        <div className="card">
-          <h3>Status do gasto</h3>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Status</th><th>Itens</th><th>Valor</th><th>%</th></tr></thead>
-              <tbody>
-                {statusData.map((s) => (
-                  <tr key={s.label}>
-                    <td data-label="Status">{s.label}</td>
-                    <td data-label="Itens">{s.count}</td>
-                    <td data-label="Valor" className="total-cell">{money(s.value)}</td>
-                    <td data-label="%">{s.pct.toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+        <div className="card stack">
+          <h3 style={{ margin: 0 }}>Por status</h3>
+          <div className="stack-2">
+            {statusT.map((s) => (
+              <div key={s.status} className="row-between">
+                <span className="small">{s.status}</span>
+                <span className="small num">{money(s.total)}</span>
+              </div>
+            ))}
           </div>
         </div>
+
+        <div className="card stack">
+          <div className="field">
+            <label htmlFor="travelers">Viajantes</label>
+            <input
+              id="travelers" type="number" min="1" inputMode="numeric"
+              value={trav} onChange={(e) => actions.setTravelers(e.target.value)}
+              style={{ maxWidth: 120 }}
+            />
+          </div>
+        </div>
+
+        <div className="card card-flush">
+          <div style={{ padding: 'var(--sp-4) var(--sp-4) 0' }}>
+            <h3>Relatórios</h3>
+            <p className="small t2">Consulte os itens por categoria. Para editar, use a tela Dias.</p>
+          </div>
+          {REPORTS.map(([id, icon, label]) => (
+            <Row key={id} icon={icon} title={label} value={<button className="btn-ghost btn-sm" onClick={() => setReport(id)}>Ver →</button>} />
+          ))}
+        </div>
       </div>
-    </section>
+
+      {report && <ReportSheet id={report} onClose={() => setReport(null)} />}
+    </div>
+  );
+}
+
+/* Relatórios: leitura, em Rows — nenhuma tabela. */
+function ReportSheet({ id, onClose }) {
+  const { state } = useTrip();
+  const label = REPORTS.find((r) => r[0] === id)?.[2] || 'Relatório';
+  const dates = allPlanningDates(state);
+
+  const body = () => {
+    if (id === 'transporte') {
+      const arr = [...state.transports].sort((a, b) => String(getTransportDate(a)).localeCompare(String(getTransportDate(b))));
+      if (!arr.length) return <EmptyState title="Nenhum transporte">Adicione transportes na tela Dias.</EmptyState>;
+      return arr.map((x) => {
+        const dur = getTransportDurationMinutes(x);
+        return (
+          <Row key={x.id} icon="🚆" cancelled={isCancelled(x)}
+            title={`${getTransportMode(x) || 'Transporte'}${dur ? ` · ${minutesToLabel(dur)}` : ''}`}
+            sub={`${fmtDate(getTransportDate(x))} · ${getTransportOrigin(x) || '—'} → ${getTransportDest(x) || '—'}`}
+            value={<span className="num">{money(num(x.cost))}</span>} />
+        );
+      });
+    }
+    if (id === 'alimentacao') {
+      const arr = [...state.foodItems].sort((a, b) => a.date.localeCompare(b.date));
+      if (!arr.length) return <EmptyState title="Nenhuma refeição">Adicione refeições na tela Dias.</EmptyState>;
+      return arr.map((x) => (
+        <Row key={x.id} icon="🍽️" cancelled={isCancelled(x)}
+          title={x.type || 'Refeição'}
+          sub={`${fmtDate(x.date)} · ${x.place || 'sem local'} · ${x.city || ''}`}
+          value={<span className="num">{money(num(x.cost))}</span>} />
+      ));
+    }
+    if (id === 'atracoes') {
+      const arr = [...state.attractions].sort((a, b) => a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time)));
+      if (!arr.length) return <EmptyState title="Nenhuma atração">Adicione atrações na tela Dias.</EmptyState>;
+      return arr.map((x) => (
+        <Row key={x.id} icon="🎟️" cancelled={isCancelled(x)}
+          title={x.name || 'Atração'}
+          sub={`${fmtDate(x.date)} · ${x.time || ''} · ${x.city || ''}`}
+          value={<span className="num">{money(num(x.cost))}</span>} />
+      ));
+    }
+    if (id === 'outras') {
+      const arr = [...state.otherExpenses].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      if (!arr.length) return <EmptyState title="Nenhuma despesa">Adicione despesas na tela Dias.</EmptyState>;
+      return arr.map((x) => (
+        <Row key={x.id} icon="💼" cancelled={isCancelled(x)}
+          title={x.name || 'Despesa'}
+          sub={`${fmtDate(x.date)} · ${x.city || ''}`}
+          value={<span className="num">{money(num(x.cost))}</span>} />
+      ));
+    }
+    // roteiro por dia
+    if (!dates.length) return <EmptyState title="Sem dias">Cadastre cidades com datas.</EmptyState>;
+    return dates.map((d) => (
+      <Row key={d.date} icon="🗓️"
+        title={`${fmtDate(d.date)} · ${d.city || ''}`}
+        sub={[
+          dayTransport(state, d.date) ? `transporte ${money(dayTransport(state, d.date))}` : null,
+          dayLodging(state, d.date) ? `hospedagem ${money(dayLodging(state, d.date))}` : null,
+          dayFood(state, d.date) ? `comida ${money(dayFood(state, d.date))}` : null,
+          dayAttractions(state, d.date) ? `atrações ${money(dayAttractions(state, d.date))}` : null,
+          dayOther(state, d.date) ? `outras ${money(dayOther(state, d.date))}` : null,
+        ].filter(Boolean).join(' · ') || 'sem custos'}
+        value={<span className="num">{money(dayTotal(state, d.date))}</span>} />
+    ));
+  };
+
+  return (
+    <Sheet title={label} onClose={onClose}>
+      <div className="card card-flush">{body()}</div>
+    </Sheet>
   );
 }
