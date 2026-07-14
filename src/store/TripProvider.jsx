@@ -12,7 +12,7 @@ import { blankState, normalizeState, uid } from '../domain/state.js';
 import { ensureGenerated, deleteCityCascade } from '../domain/generate.js';
 import { autoTitle, periodByTime } from '../domain/dates.js';
 import { num } from '../domain/format.js';
-import { subscribeTrip, saveTripState, heartbeatPresence, subscribePresence, clearPresence } from '../lib/tripData.js';
+import { subscribeTrip, saveTripState, heartbeatPresence, subscribePresence, clearPresence, logActivity } from '../lib/tripData.js';
 
 const TripContext = createContext(null);
 export const useTrip = () => useContext(TripContext);
@@ -120,20 +120,27 @@ export function TripProvider({ tripId, user, children }) {
 
   const actions = {
     updateItem(arrName, index, key, value) {
+      let becamePaid = false;
       mutate((s) => {
         const item = s[arrName][index];
         if (!item) return;
         item[key] = key === 'cost' || key === 'nightly' ? num(value) : value;
         if (key === 'time') item.period = periodByTime(value);
-        // item 4.3: editar a linha de café automático "adota" ela (vira manual)
         if (arrName === 'foodItems' && item.autoBreakfast && ['place', 'cost', 'type', 'status'].includes(key)) {
           item.autoBreakfast = false;
         }
+        if (key === 'status' && value === 'Pago' && item.status !== 'Pago') becamePaid = true;
       });
+      // 5.F — feed de atividade: só o evento discreto "marcou como Pago", não cada tecla
+      if (becamePaid) {
+        const label = state[arrName][index]?.name || state[arrName][index]?.place || state[arrName][index]?.type || 'item';
+        logActivity(tripId, user, `marcou "${label}" como Pago`);
+      }
     },
     deleteItem(arrName, index) { mutate((s) => s[arrName].splice(index, 1)); },
     addCity() {
       mutate((s) => s.cities.push({ id: uid(), city: '', emoji: '📍', start: '', end: '', hotel: '', nightly: 0, status: 'Planejado', notes: '', breakfastIncluded: false }));
+      logActivity(tripId, user, 'adicionou uma cidade');
     },
     setCityField(index, key, value) {
       mutate((s) => { const c = s.cities[index]; if (!c) return; c[key] = key === 'nightly' ? num(value) : value; });
@@ -156,7 +163,11 @@ export function TripProvider({ tripId, user, children }) {
       });
       return !rejected;
     },
-    deleteCity(index, removeRelated) { mutate((s) => deleteCityCascade(s, index, removeRelated)); },
+    deleteCity(index, removeRelated) {
+      const name = state.cities[index]?.city || 'uma cidade';
+      mutate((s) => deleteCityCascade(s, index, removeRelated));
+      logActivity(tripId, user, `removeu ${name}`);
+    },
     addTransport(firstDate) {
       mutate((s) => s.transports.push({ id: uid(), date: firstDate || '', time: '09:00', originCity: '', originPlace: '', destCity: '', destPlace: '', mode: '', duration: '', cost: 0, status: 'Planejado', notes: '' }));
     },
@@ -174,7 +185,9 @@ export function TripProvider({ tripId, user, children }) {
       mutate((s) => s.checklist.push({ id: uid(), category: 'Outros', item, responsible: '', priority: 'Média', status: 'Pendente', notes: '', done: false }));
     },
     toggleChecklist(index, checked) {
+      const label = state.checklist[index]?.item || 'um item';
       mutate((s) => { const c = s.checklist[index]; if (!c) return; c.done = checked; c.status = checked ? 'Concluído' : 'Pendente'; });
+      if (checked) logActivity(tripId, user, `concluiu "${label}" no checklist`);
     },
     seedChecklist() {
       const seeds = ['Roupas leves', 'Casaco', 'Calçados confortáveis', 'Itens de higiene', 'Adaptador de tomada', 'Passaporte', 'Seguro viagem', 'Comprovantes de hospedagem', 'Passagens', 'Reservas de atrações', 'Remédios de uso contínuo', 'Cartão internacional', 'Power bank', 'Carregador'];

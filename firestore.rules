@@ -73,6 +73,19 @@ service cloud.firestore {
         allow write: if signedIn() && request.auth.uid == uid && isMember(tripId);
         allow delete: if signedIn() && tripData(tripId).ownerId == request.auth.uid;
       }
+
+      // Comentários por item (Fase 5, item 5.F) — herdam o acesso da viagem;
+      // só o autor apaga o próprio comentário.
+      match /comments/{commentId} {
+        allow read, create: if isMember(tripId);
+        allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+      }
+
+      // Feed de atividade (Fase 5, item 5.F) — só leitura/criação; não se edita
+      // nem se apaga um evento de atividade (é um log).
+      match /activity/{eventId} {
+        allow read, create: if isMember(tripId);
+      }
     }
 
     // Convites

@@ -1,229 +1,182 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
-import { money, num } from '../../domain/format.js';
-import { daysBetween, calendarDays, mainCities, uniqueCities, validateCityCoverage } from '../../domain/dates.js';
-import { fmtDate } from '../../domain/format.js';
+import { money, num, fmtDate } from '../../domain/format.js';
+import { daysBetween, uniqueCities, validateCityCoverage } from '../../domain/dates.js';
 import { totals } from '../../domain/costs.js';
-import {Kpi, StatusSelect, StatusChip } from '../ui.jsx';
+import { Row, StatusChip, Sheet, EmptyState, Banner, Metric, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 
+/** CIDADES — o esqueleto da viagem. Reconstruída sem tabela (Fase R3). */
 export default function Cidades() {
   const { state, actions } = useTrip();
-  const [confirmDelete, setConfirmDelete] = useState(null); // índice pendente de confirmação
-  const totalNights = state.cities.reduce((s, c) => s + daysBetween(c.start, c.end), 0);
-  const main = mainCities(state);
+  const [editing, setEditing] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const coverage = useMemo(() => validateCityCoverage(state), [state]);
   const t = totals(state);
-  const coverage = validateCityCoverage(state);
-  const hasIssues = coverage.overlaps.length > 0 || coverage.gaps.length > 0;
+  const nights = state.cities.reduce((s, c) => s + daysBetween(c.start, c.end), 0);
+
+  const add = () => { actions.addCity(); setEditing(state.cities.length); };
 
   return (
-    <section>
-      <h2>Cidades</h2>
-      <div className="grid grid4">
-        <Kpi label="Cidades únicas" value={uniqueCities(state).length} />
-        <Kpi label="Total de diárias" value={totalNights} />
-        <Kpi label="Cidade principal" value={main.join(', ') || '-'} />
-        <Kpi label="Hospedagem total" value={money(t.lodging)} />
-      </div>
-      <br />
+    <div className="screen">
+      <div className="container stack">
+        <h2>Cidades</h2>
 
-      {hasIssues && (
-        <div className="card" style={{ borderLeft: '5px solid var(--warn)', marginBottom: 14 }} role="alert">
-          <h3>⚠️ Verificação de datas</h3>
-          {coverage.gaps.length > 0 && (
-            <p style={{ margin: '4px 0' }}>
-              <b>Dias sem cidade:</b> {coverage.gaps.map(fmtDate).join(', ')}. Há dias dentro do
-              período da viagem sem nenhuma cidade responsável.
-            </p>
-          )}
-          {coverage.overlaps.length > 0 && (
-            <p style={{ margin: '4px 0' }}>
-              <b>Dias em duas cidades:</b>{' '}
-              {coverage.overlaps.map((o) => `${fmtDate(o.date)} (${o.cities.join(' e ')})`).join('; ')}.
-              Isso é diferente do check-out/check-in no mesmo dia — parece sobreposição de datas.
-            </p>
-          )}
+        <div className="grid-2">
+          <Metric label="Cidades" value={uniqueCities(state).length} />
+          <Metric label="Diárias" value={nights} />
+          <Metric label="Hospedagem" value={money(t.lodging)} />
+          <Metric label="Total da viagem" value={money(t.total)} />
         </div>
-      )}
-      <div className="toolbar">
-        <button onClick={() => actions.addCity()}>Adicionar cidade</button>
+
+        {coverage.gaps.length > 0 && (
+          <Banner kind="warn">
+            <b>Dias sem cidade:</b> {coverage.gaps.map(fmtDate).join(', ')}.
+          </Banner>
+        )}
+        {coverage.overlaps.length > 0 && (
+          <Banner kind="warn">
+            <b>Dias em duas cidades:</b>{' '}
+            {coverage.overlaps.map((o) => `${fmtDate(o.date)} (${o.cities.join(' e ')})`).join('; ')}.
+            Isso é diferente de check-out e check-in no mesmo dia.
+          </Banner>
+        )}
+
+        {state.cities.length === 0 ? (
+          <EmptyState
+            title="Comece a viagem aqui"
+            action={<button className="btn-primary" onClick={add}>Adicionar cidade</button>}
+          >
+            Cadastre uma cidade com check-in e check-out. Os dias, custos e o roteiro se organizam sozinhos.
+          </EmptyState>
+        ) : (
+          <>
+            <div className="card card-flush">
+              {state.cities.map((c, i) => {
+                const n = daysBetween(c.start, c.end);
+                return (
+                  <Row
+                    key={c.id}
+                    icon={c.emoji || '📍'}
+                    cancelled={isCancelled(c)}
+                    title={c.city || 'Cidade sem nome'}
+                    sub={
+                      c.start && c.end
+                        ? `${fmtDate(c.start)} → ${fmtDate(c.end)} · ${n} ${n === 1 ? 'diária' : 'diárias'}${c.hotel ? ` · ${c.hotel}` : ''}`
+                        : 'Sem datas'
+                    }
+                    value={<span className="num">{money(n * num(c.nightly))}</span>}
+                  >
+                    <StatusChip value={c.status} onChange={(v) => actions.setCityField(i, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing(i)}>Editar</button>
+                  </Row>
+                );
+              })}
+            </div>
+            <button className="btn-add" onClick={add}>+ Adicionar cidade</button>
+          </>
+        )}
       </div>
 
-      {state.cities.length === 0 ? (
-        <p className="empty">
-          Comece adicionando uma cidade. As demais telas serão geradas a partir das datas de
-          check-in e check-out.
-        </p>
-      ) : (
-        <>
-          <div className="card">
-            <h3>Distribuição da viagem</h3>
-            {state.cities.map((c, i) => {
-              const pct = totalNights
-                ? Math.round((daysBetween(c.start, c.end) / totalNights) * 100)
-                : 0;
-              return (
-                <div className="progress-row" key={c.id}>
-                  <b>{c.city || '(sem nome)'}</b>
-                  <div className="progress-track">
-                    <div className="progress-fill" style={{ width: pct + '%' }} />
-                  </div>
-                  <span>{pct}%</span>
-                </div>
-              );
-            })}
-          </div>
-          <br />
-          <div className="grid grid2">
-            {state.cities.map((c, i) => {
-              const nights = daysBetween(c.start, c.end);
-              const total = nights * num(c.nightly);
-              const pct = totalNights ? Math.round((nights / totalNights) * 100) : 0;
-              const invalid = c.start && c.end && nights <= 0;
-              return (
-                <div className="card city-card" key={c.id}>
-                  <div className="emoji">{c.emoji || '📍'}</div>
-                  {main.includes(c.city) && <span className="badge">⭐ Cidade principal</span>}
-                  <label>
-                    Nome da cidade
-                    <input
-                      value={c.city}
-                      onChange={(e) => actions.setCityField(i, 'city', e.target.value)}
-                    />
-                  </label>
-                  <div className="grid grid2">
-                    <label>
-                      Check-in
-                      <input
-                        type="date"
-                        value={c.start || ''}
-                        onChange={(e) => actions.setCityStart(i, e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Check-out
-                      <input
-                        type="date"
-                        min={c.start || ''}
-                        value={c.end || ''}
-                        aria-describedby={invalid ? `cityEndErr${i}` : undefined}
-                        onChange={(e) => {
-                          const ok = actions.setCityEnd(i, e.target.value);
-                          if (!ok) e.target.value = c.end || '';
-                        }}
-                      />
-                    </label>
-                  </div>
-                  {invalid && (
-                    <div className="error" id={`cityEndErr${i}`} role="alert">
-                      Check-out deve ser posterior ao check-in.
-                    </div>
-                  )}
-                  <label>
-                    Hospedagem
-                    <input
-                      value={c.hotel || ''}
-                      onChange={(e) => actions.setCityField(i, 'hotel', e.target.value)}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!c.breakfastIncluded}
-                      onChange={(e) => actions.setCityField(i, 'breakfastIncluded', e.target.checked)}
-                    />
-                    Café da manhã incluso
-                  </label>
-                  <div className="grid grid2">
-                    <label>
-                      Custo por diária
-                      <MoneyInput
-                        value={num(c.nightly)}
-                        onChange={(v) => actions.setCityField(i, 'nightly', v)}
-                      />
-                    </label>
-                    <label>
-                      Status
-                      <StatusSelect
-                        value={c.status || 'Planejado'}
-                        onChange={(v) => actions.setCityField(i, 'status', v)}
-                      />
-                    </label>
-                  </div>
-                  <div className="grid grid2">
-                    <div>
-                      <b>Diárias:</b> {nights}
-                    </div>
-                    <div>
-                      <b>Total hospedagem:</b> {money(total)}
-                    </div>
-                  </div>
-                  <div>
-                    <b>Distribuição:</b>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: pct + '%' }} />
-                    </div>
-                    <small>{pct}% da viagem</small>
-                  </div>
-                  <div>
-                    <b>Mini calendário:</b>
-                    <div className="calendar-line">
-                      {calendarDays(c).map((d, k) => (
-                        <span className="calendar-day" key={k}>
-                          {d}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <label>
-                    Observações
-                    <textarea
-                      value={c.notes || ''}
-                      onChange={(e) => actions.setCityField(i, 'notes', e.target.value)}
-                    />
-                  </label>
-                  <button className="small-btn danger" onClick={() => setConfirmDelete(i)}>
-                    Excluir cidade
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </>
+      {editing != null && state.cities[editing] && (
+        <CitySheet
+          index={editing}
+          onClose={() => setEditing(null)}
+          onDelete={() => { setConfirmDel(editing); setEditing(null); }}
+        />
       )}
 
-      {confirmDelete !== null && (
-        <div className="modal-backdrop" onClick={() => setConfirmDelete(null)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Excluir cidade</h3>
-              <button className="ghost" onClick={() => setConfirmDelete(null)}>
-                Fechar
-              </button>
-            </div>
-            <p>Deseja remover também alimentação, atrações, transporte e despesas ligados a esta cidade?</p>
-            <div className="toolbar">
-              <button
-                onClick={() => {
-                  actions.deleteCity(confirmDelete, false);
-                  setConfirmDelete(null);
-                }}
-              >
-                Excluir só a cidade
-              </button>
-              <button
-                className="danger"
-                onClick={() => {
-                  actions.deleteCity(confirmDelete, true);
-                  setConfirmDelete(null);
-                }}
-              >
-                Excluir tudo relacionado
-              </button>
-            </div>
+      {confirmDel != null && state.cities[confirmDel] && (
+        <Sheet title="Excluir cidade" onClose={() => setConfirmDel(null)}>
+          <p>
+            Excluir <b>{state.cities[confirmDel].city || 'esta cidade'}</b>. Os itens ligados a ela
+            (refeições, atrações, transportes no período) podem ser removidos junto.
+          </p>
+          <div className="stack-2">
+            <button className="btn-danger btn-block" onClick={() => { actions.deleteCity(confirmDel, true); setConfirmDel(null); }}>
+              Excluir cidade e itens ligados
+            </button>
+            <button className="btn-block" onClick={() => { actions.deleteCity(confirmDel, false); setConfirmDel(null); }}>
+              Excluir só a cidade
+            </button>
+            <button className="btn-ghost btn-block" onClick={() => setConfirmDel(null)}>Cancelar</button>
           </div>
-        </div>
+        </Sheet>
       )}
-    </section>
+    </div>
+  );
+}
+
+function CitySheet({ index, onClose, onDelete }) {
+  const { state, actions } = useTrip();
+  const c = state.cities[index];
+  const [dateError, setDateError] = useState('');
+  if (!c) return null;
+
+  return (
+    <Sheet title="Cidade" onClose={onClose}>
+      <div className="stack">
+        <div className="grid-2">
+          <Field label="Cidade">
+            <input value={c.city || ''} onChange={(e) => actions.setCityField(index, 'city', e.target.value)} />
+          </Field>
+          <Field label="Emoji">
+            <input value={c.emoji || ''} maxLength={4} onChange={(e) => actions.setCityField(index, 'emoji', e.target.value)} />
+          </Field>
+        </div>
+
+        <div className="grid-2">
+          <Field label="Check-in">
+            <input type="date" value={c.start || ''} onChange={(e) => { setDateError(''); actions.setCityStart(index, e.target.value); }} />
+          </Field>
+          <Field label="Check-out">
+            <input
+              type="date"
+              value={c.end || ''}
+              aria-describedby={dateError ? 'city-date-error' : undefined}
+              onChange={(e) => {
+                const ok = actions.setCityEnd(index, e.target.value);
+                setDateError(ok ? '' : 'O check-out precisa ser depois do check-in.');
+              }}
+            />
+          </Field>
+        </div>
+        {dateError && <p id="city-date-error" className="small" style={{ color: 'var(--danger)' }}>{dateError}</p>}
+
+        <Field label="Hospedagem">
+          <input value={c.hotel || ''} onChange={(e) => actions.setCityField(index, 'hotel', e.target.value)} />
+        </Field>
+
+        <label className="row" style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-1)', padding: 'var(--sp-3)' }}>
+          <input
+            type="checkbox"
+            checked={!!c.breakfastIncluded}
+            onChange={(e) => actions.setCityField(index, 'breakfastIncluded', e.target.checked)}
+          />
+          <span className="row-main">
+            <span className="row-title">Café da manhã incluso</span>
+            <span className="row-sub">Cria a refeição automaticamente em cada dia, com o nome do hotel.</span>
+          </span>
+        </label>
+
+        <Field label="Custo por diária">
+          <MoneyInput value={num(c.nightly)} onChange={(v) => actions.setCityField(index, 'nightly', v)} className="input-money" />
+        </Field>
+
+        <div className="field">
+          <span>Status</span>
+          <div><StatusChip value={c.status} onChange={(v) => actions.setCityField(index, 'status', v)} /></div>
+        </div>
+
+        <Field label="Notas">
+          <textarea value={c.notes || ''} onChange={(e) => actions.setCityField(index, 'notes', e.target.value)} />
+        </Field>
+
+        <div className="stack-2" style={{ marginTop: 'var(--sp-2)' }}>
+          <button className="btn-primary btn-block" onClick={onClose}>Concluir</button>
+          <button className="btn-danger btn-block" onClick={onDelete}>Excluir cidade</button>
+        </div>
+      </div>
+    </Sheet>
   );
 }

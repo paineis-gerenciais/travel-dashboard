@@ -1,6 +1,5 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useState } from 'react';
 import { useAuth } from './store/useAuth.js';
 import { useTheme } from './store/useTheme.js';
 import { TripsProvider, useTrips } from './store/TripsProvider.jsx';
@@ -15,8 +14,8 @@ installGlobalErrorHandlers();
 
 function Loading({ text = 'Carregando…' }) {
   return (
-    <div className="login-wrap">
-      <div className="login-card"><p className="muted">{text}</p></div>
+    <div className="container screen">
+      <p className="t2">{text}</p>
     </div>
   );
 }

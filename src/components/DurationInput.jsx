@@ -1,8 +1,6 @@
-// components/DurationInput.jsx — contador de horas e minutos (item N2).
-// Armazena e devolve o total em MINUTOS (número), gravado no mesmo campo
-// `duration` do transporte — sem criar campo novo no Firestore.
 import { getTransportDurationMinutes } from '../domain/transport.js';
 
+/** Contador de horas e minutos. Devolve o total em minutos. */
 export default function DurationInput({ item, onChange }) {
   const totalMin = getTransportDurationMinutes(item);
   const h = Math.floor(totalMin / 60);
@@ -15,27 +13,13 @@ export default function DurationInput({ item, onChange }) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} aria-label="Duração">
-      <input
-        type="number"
-        min="0"
-        max="99"
-        value={h}
-        onChange={(e) => set(e.target.value, m)}
-        aria-label="Horas"
-        style={{ width: 56, textAlign: 'right' }}
-      />
-      <span aria-hidden="true">h</span>
-      <input
-        type="number"
-        min="0"
-        max="59"
-        value={m}
-        onChange={(e) => set(h, e.target.value)}
-        aria-label="Minutos"
-        style={{ width: 56, textAlign: 'right' }}
-      />
-      <span aria-hidden="true">min</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+      <input type="number" min="0" max="99" inputMode="numeric" value={h}
+        onChange={(e) => set(e.target.value, m)} aria-label="Horas" style={{ textAlign: 'right' }} />
+      <span className="small t2">h</span>
+      <input type="number" min="0" max="59" inputMode="numeric" value={m}
+        onChange={(e) => set(h, e.target.value)} aria-label="Minutos" style={{ textAlign: 'right' }} />
+      <span className="small t2">min</span>
     </div>
   );
 }
