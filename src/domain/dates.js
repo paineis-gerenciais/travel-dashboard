@@ -154,6 +154,28 @@ export function calendarDays(c) {
 /** Rótulo do ponto de partida/chegada implícito da viagem (Fase 4, item 4.5). */
 export const HOME = 'Casa';
 
+/**
+ * Cor por CIDADE (não por seção). Depois do redesign, a cor deixou de decorar a
+ * interface e passou a carregar informação: cada cidade tem um matiz estável,
+ * derivado do próprio nome, para que a pessoa reconheça "onde está" num relance
+ * — no cartão do dia, na linha do tempo e na lista de cidades.
+ * Devolve um índice de 0 a 7; a paleta em si vive no CSS (--city-0..--city-7),
+ * para funcionar nos modos claro e escuro sem duplicar cores aqui.
+ */
+export function cityColorIndex(cityName) {
+  const s = String(cityName || '').trim().toLowerCase();
+  if (!s || s === HOME.toLowerCase()) return -1; // Casa e vazio não recebem cor
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
+  return h % 8;
+}
+
+/** Classe CSS da cor de uma cidade (ou string vazia, se não houver cor). */
+export function cityColorClass(cityName) {
+  const i = cityColorIndex(cityName);
+  return i < 0 ? '' : `city-c${i}`;
+}
+
 /** Limites da viagem: primeiro/último dia e primeira/última cidade reais. */
 export function tripBounds(state) {
   const real = state.cities.filter((c) => c.start && c.end);

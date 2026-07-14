@@ -7,6 +7,7 @@ import { allPlanningDates, uniqueCities, mainCities } from '../../domain/dates.j
 import { normalizeState } from '../../domain/state.js';
 import { logError } from '../../lib/logger.js';
 import { Row, Sheet, Metric, EmptyState, StatusChip, CHECKLIST_STATUS } from '../ui.jsx';
+import { appUrl, whatsappUrl, nativeShare, copyToClipboard } from '../../lib/invite.js';
 import VersionsModal from '../VersionsModal.jsx';
 import ShareModal from '../ShareModal.jsx';
 import DiagnosticsModal from '../DiagnosticsModal.jsx';
@@ -90,6 +91,8 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('share')}>Abrir →</button>} />
           <Row icon="🗂️" title="Versões salvas" sub="Guardar ou voltar a um ponto anterior"
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('versions')}>Abrir →</button>} />
+          <Row icon="🔗" title="Enviar link do app" sub="Sem convite: só o endereço, por WhatsApp ou cópia"
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('applink')}>Enviar →</button>} />
         </div>
 
         <div className="card card-flush">
@@ -136,6 +139,7 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
           <DiagnosticsModal />
         </Sheet>
       )}
+      {sheet === 'applink' && <AppLinkSheet onClose={() => setSheet(null)} />}
       {sheet === 'clear' && (
         <Sheet title="Limpar viagem" onClose={() => setSheet(null)}>
           <p>
@@ -205,6 +209,35 @@ function ChecklistSheet({ onClose }) {
             ))}
           </div>
         )}
+      </div>
+    </Sheet>
+  );
+}
+
+function AppLinkSheet({ onClose }) {
+  const [copied, setCopied] = useState(false);
+  const text = `Plano de viagem: ${appUrl()}`;
+  const hasNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+
+  return (
+    <Sheet title="Enviar link do app" onClose={onClose}>
+      <div className="stack">
+        <p className="small t2" style={{ margin: 0 }}>
+          Isto envia só o endereço do app — não dá acesso a nenhuma viagem. Para dar acesso, use
+          Compartilhar e convide o e-mail da pessoa.
+        </p>
+        <div className="stack-2">
+          <a className="btn btn-primary btn-block" href={whatsappUrl(text)} target="_blank" rel="noreferrer">
+            💬 Enviar pelo WhatsApp
+          </a>
+          {hasNativeShare && (
+            <button className="btn-block" onClick={() => nativeShare('Plano de viagem', text)}>📤 Compartilhar…</button>
+          )}
+          <button className="btn-block" onClick={async () => setCopied(await copyToClipboard(appUrl()))}>
+            {copied ? '✅ Link copiado' : '📋 Copiar link'}
+          </button>
+        </div>
+        <p className="small t3" style={{ margin: 0, wordBreak: 'break-all' }}>{appUrl()}</p>
       </div>
     </Sheet>
   );

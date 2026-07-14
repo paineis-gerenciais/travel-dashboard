@@ -311,3 +311,70 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
   body{background:#fff;color:#000;padding:0}
   .card,.row{border-color:#ccc;box-shadow:none}
 }
+
+/* ============================================================
+   Cor por CIDADE (não por seção). Depois do redesign, a cor
+   voltou — mas como informação: cada cidade tem um matiz
+   estável, para se reconhecer "onde estou" num relance.
+   A interface segue neutra; só a cidade é colorida.
+   ============================================================ */
+.city-c0{--city:#2f6df6; --city-soft:#e8f0ff}
+.city-c1{--city:#0f9d58; --city-soft:#e6f5ec}
+.city-c2{--city:#b7791f; --city-soft:#fdf3e2}
+.city-c3{--city:#8b5cf6; --city-soft:#f1ebfe}
+.city-c4{--city:#e5484d; --city-soft:#fdecea}
+.city-c5{--city:#0891b2; --city-soft:#e0f5fa}
+.city-c6{--city:#d946a0; --city-soft:#fceaf5}
+.city-c7{--city:#65a30d; --city-soft:#f0f7e3}
+
+[data-theme="dark"] .city-c0{--city:#7ba5ff; --city-soft:#1a2438}
+[data-theme="dark"] .city-c1{--city:#4ecb8b; --city-soft:#12241b}
+[data-theme="dark"] .city-c2{--city:#e0a339; --city-soft:#2a2113}
+[data-theme="dark"] .city-c3{--city:#a98bff; --city-soft:#221c33}
+[data-theme="dark"] .city-c4{--city:#ff7b7f; --city-soft:#2d1715}
+[data-theme="dark"] .city-c5{--city:#3fbcd6; --city-soft:#0f272d}
+[data-theme="dark"] .city-c6{--city:#f072bd; --city-soft:#2e1728}
+[data-theme="dark"] .city-c7{--city:#96c93f; --city-soft:#1d2711}
+
+/* Etiqueta da cidade: o único lugar onde a cor aparece cheia */
+.city-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:2px 10px;border-radius:var(--r-pill);
+  background:var(--city-soft, var(--surface-2));
+  color:var(--city, var(--text-2));
+  font-size:var(--fs-1);font-weight:var(--w-bold);white-space:nowrap;
+}
+/* Faixa lateral: identifica a cidade sem gritar */
+.city-edge{border-left:3px solid var(--city, var(--line));border-radius:0 var(--r-2) var(--r-2) 0}
+.timeline-day.city-c0[aria-selected="true"],
+.timeline-day.city-c1[aria-selected="true"],
+.timeline-day.city-c2[aria-selected="true"],
+.timeline-day.city-c3[aria-selected="true"],
+.timeline-day.city-c4[aria-selected="true"],
+.timeline-day.city-c5[aria-selected="true"],
+.timeline-day.city-c6[aria-selected="true"],
+.timeline-day.city-c7[aria-selected="true"]{
+  background:var(--city);border-color:var(--city);color:#fff;
+}
+.timeline-city.city-c0,.timeline-city.city-c1,.timeline-city.city-c2,.timeline-city.city-c3,
+.timeline-city.city-c4,.timeline-city.city-c5,.timeline-city.city-c6,.timeline-city.city-c7{
+  color:var(--city);
+}
+.row-icon.city-c0,.row-icon.city-c1,.row-icon.city-c2,.row-icon.city-c3,
+.row-icon.city-c4,.row-icon.city-c5,.row-icon.city-c6,.row-icon.city-c7{
+  background:var(--city-soft);
+}
+
+/* ---------- Menu inferior: fixo em todas as telas, inclusive Dias ---------- */
+/* `will-change`/`transform` no cartão de Dias cria um contexto que pode
+   "prender" elementos fixos; isolar a barra num contexto próprio garante que
+   ela nunca acompanhe a rolagem nem o gesto de swipe. */
+@media (max-width:767px){
+  .tabbar{
+    position:fixed;bottom:0;left:0;right:0;
+    z-index:50;
+    transform:translateZ(0);
+    will-change:auto;
+  }
+  body{padding-bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom))}
+}
