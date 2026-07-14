@@ -9,10 +9,23 @@ import {
 const Ctx = createContext(null);
 export const useTrips = () => useContext(Ctx);
 
+const TRIP_KEY = 'trip_active_id';
+
 export function TripsProvider({ user, children }) {
   const [trips, setTrips] = useState([]);
-  const [activeTripId, setActiveTripId] = useState(null);
+  // F5 mantém a mesma página: além da aba (App.jsx), a VIAGEM ativa também
+  // é restaurada. Sem isto, recarregar sempre voltava para "Minhas viagens".
+  const [activeTripId, setActiveTripId] = useState(() => {
+    try { return localStorage.getItem(TRIP_KEY) || null; } catch { return null; }
+  });
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (activeTripId) localStorage.setItem(TRIP_KEY, activeTripId);
+      else localStorage.removeItem(TRIP_KEY);
+    } catch { /* ignore */ }
+  }, [activeTripId]);
 
   useEffect(() => {
     let unsub;
@@ -22,6 +35,9 @@ export function TripsProvider({ user, children }) {
       if (!alive) return;
       unsub = subscribeMyTrips(user.uid, (list) => {
         setTrips(list);
+        // Se a viagem restaurada não existe mais (excluída ou acesso revogado),
+        // volta ao seletor sem erro.
+        setActiveTripId((cur) => (cur && !list.some((t) => t.id === cur) ? null : cur));
         setReady(true);
       });
     })();

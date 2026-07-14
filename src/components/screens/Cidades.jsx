@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { money, num, fmtDate } from '../../domain/format.js';
-import { daysBetween, uniqueCities, validateCityCoverage } from '../../domain/dates.js';
+import { daysBetween, uniqueCities, validateCityCoverage, cityColorClass } from '../../domain/dates.js';
 import { totals } from '../../domain/costs.js';
 import { Row, StatusChip, Sheet, EmptyState, Banner, Metric, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
@@ -54,12 +54,13 @@ export default function Cidades() {
             <div className="card card-flush">
               {state.cities.map((c, i) => {
                 const n = daysBetween(c.start, c.end);
+                const cc = cityColorClass(c.city);
                 return (
                   <Row
                     key={c.id}
-                    icon={c.emoji || '📍'}
+                    icon={<span className={cc} style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', borderRadius: 'inherit' }}>{c.emoji || '📍'}</span>}
                     cancelled={isCancelled(c)}
-                    title={c.city || 'Cidade sem nome'}
+                    title={<span className={`city-tag ${cc}`}>{c.city || 'Cidade sem nome'}</span>}
                     sub={
                       c.start && c.end
                         ? `${fmtDate(c.start)} → ${fmtDate(c.end)} · ${n} ${n === 1 ? 'diária' : 'diárias'}${c.hotel ? ` · ${c.hotel}` : ''}`

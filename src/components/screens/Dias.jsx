@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate, money, num } from '../../domain/format.js';
-import { allPlanningDates, cityForDate, tripDayFlow, validateCityCoverage, HOME } from '../../domain/dates.js';
+import { allPlanningDates, cityForDate, tripDayFlow, validateCityCoverage, cityColorClass, HOME } from '../../domain/dates.js';
 import {
   getTransportDate, getTransportOrigin, getTransportDest, getTransportMode,
   getTransportDurationMinutes, minutesToLabel,
@@ -128,6 +128,7 @@ export default function Dias({ tripId, onNavigate }) {
   };
 
   const city = cityForDate(state, date);
+  const cityClass = cityColorClass(flow.to && flow.to !== HOME ? flow.to : city);
 
   return (
     <div className="screen">
@@ -136,7 +137,7 @@ export default function Dias({ tripId, onNavigate }) {
 
         <div
           ref={cardRef}
-          className="card stack"
+          className={`card stack city-edge ${cityClass}`}
           style={{ touchAction: 'pan-y', willChange: 'transform' }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -148,6 +149,7 @@ export default function Dias({ tripId, onNavigate }) {
               <h2 style={{ margin: '2px 0 0', fontSize: 'var(--fs-4)' }}>
                 {isHome && <span aria-hidden="true">🏠 </span>}{flowLabel}
               </h2>
+              {city && !isHome && <span className={`city-tag ${cityClass}`} style={{ marginTop: 4 }}>{city}</span>}
             </div>
             <span className="num" style={{ fontWeight: 600, color: total > 0 ? 'var(--text)' : 'var(--text-3)' }}>
               {total > 0 ? money(total) : '—'}
@@ -194,10 +196,12 @@ export default function Dias({ tripId, onNavigate }) {
               return (
                 <Row
                   key={x.id}
-                  icon="🍽️"
+                  icon={x.autoBreakfast ? '☕' : '🍽️'}
                   cancelled={isCancelled(x)}
                   title={x.type || 'Refeição'}
-                  sub={x.place || 'Sem local'}
+                  sub={x.autoBreakfast
+                    ? `${x.place || 'hotel'} · incluso na hospedagem`
+                    : (x.place || 'Sem local')}
                   value={<span className="num">{money(num(x.cost))}</span>}
                 >
                   <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', r, 'status', v)} />
@@ -324,6 +328,12 @@ function ItemSheet({ kind, index, onClose }) {
 
         {kind === 'foodItems' && (
           <>
+            {item.autoBreakfast && (
+              <Banner kind="info">
+                Café da manhã incluso na hospedagem, criado automaticamente. Se você editar qualquer
+                campo, ele passa a ser seu — e não some mais se você desmarcar o café na cidade.
+              </Banner>
+            )}
             <Field label="Tipo">
               <input value={item.type || ''} placeholder="Café da manhã, almoço…" onChange={(e) => set('type', e.target.value)} />
             </Field>

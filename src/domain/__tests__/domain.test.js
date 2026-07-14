@@ -20,6 +20,7 @@ import {
   tripBounds,
   tripDayFlow,
   validateCityCoverage,
+  cityColorIndex,
   HOME,
 } from '../dates.js';
 import {
@@ -164,27 +165,36 @@ describe('checklistStats', () => {
 
 /* ---------- ensureGenerated (Fase 4) ---------- */
 describe('ensureGenerated', () => {
-  it('NÃO pré-gera refeições vazias; gera 1 atração + 1 outra por data', () => {
+  it('NÃO pré-gera nada: o dia nasce sem refeição, atração ou despesa', () => {
     const state = normalizeState({
       cities: [{ id: 'a', city: 'Sevilha', start: '2026-04-01', end: '2026-04-03' }],
     });
     ensureGenerated(state);
-    expect(state.foodItems.length).toBe(0); // item 4.4
-    expect(state.attractions.length).toBe(2);
-    expect(state.otherExpenses.length).toBe(2);
-    ensureGenerated(state);
-    expect(state.attractions.length).toBe(2); // não duplica
+    expect(state.foodItems.length).toBe(0);
+    expect(state.attractions.length).toBe(0);
+    expect(state.otherExpenses.length).toBe(0);
   });
 
-  it('café da manhã automático: cria com o hotel, remove ao desmarcar, mantém se editado', () => {
+  it('café da manhã cai nas manhãs seguintes: no check-out sim, no check-in não', () => {
     const state = normalizeState({
       cities: [{ id: 'a', city: 'Porto', start: '2026-05-01', end: '2026-05-03', hotel: 'Pousada', breakfastIncluded: true }],
     });
     ensureGenerated(state);
     const cafes = state.foodItems.filter((x) => x.autoBreakfast);
-    expect(cafes.length).toBe(2); // uma por noite
+    const datas = cafes.map((x) => x.date).sort();
+    expect(cafes.length).toBe(2);                  // uma manhã por noite dormida
+    expect(datas).toEqual(['2026-05-02', '2026-05-03']);
+    expect(datas).not.toContain('2026-05-01');     // check-in: chega e dorme, sem café
+    expect(datas).toContain('2026-05-03');         // check-out: toma café antes de sair
     expect(cafes[0].place).toBe('Pousada');
+  });
 
+  it('café da manhã: remove ao desmarcar, mantém se editado', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Porto', start: '2026-05-01', end: '2026-05-03', hotel: 'Pousada', breakfastIncluded: true }],
+    });
+    ensureGenerated(state);
+    expect(state.foodItems.filter((x) => x.autoBreakfast).length).toBe(2);
     // usuário edita uma -> vira manual (autoBreakfast some)
     state.foodItems.find((x) => x.autoBreakfast).autoBreakfast = false;
     // desmarca o café da cidade
@@ -361,5 +371,22 @@ describe('allPlanningDates cruza fontes', () => {
     expect(dates).toContain('2026-08-01');
     expect(dates).toContain('2026-08-05'); // data solta incluída
     expect(inferCityForDate(state, '2026-08-05')).toBe('Viena');
+  });
+});
+
+/* ---------- Cor por cidade (redesign: cor é informação, não decoração) ---------- */
+describe('cityColorIndex', () => {
+  it('mesma cidade sempre recebe a mesma cor', () => {
+    expect(cityColorIndex('Lisboa')).toBe(cityColorIndex('Lisboa'));
+    expect(cityColorIndex('lisboa')).toBe(cityColorIndex('  Lisboa  '));
+  });
+  it('devolve um índice válido de paleta', () => {
+    const i = cityColorIndex('Porto');
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(i).toBeLessThan(8);
+  });
+  it('Casa e vazio não recebem cor', () => {
+    expect(cityColorIndex(HOME)).toBe(-1);
+    expect(cityColorIndex('')).toBe(-1);
   });
 });

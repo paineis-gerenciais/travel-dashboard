@@ -6,7 +6,7 @@
 //  - (4.6) Duas linhas de transporte de/para "Casa", com datas auto-ajustadas.
 
 import { uid } from './state.js';
-import { datesFromCities, cityForDate, periodByTime, foodOrder, tripBounds, HOME } from './dates.js';
+import { cityForDate, periodByTime, foodOrder, tripBounds, HOME } from './dates.js';
 import { getTransportOriginCity, getTransportDestCity, getTransportOrigin, getTransportDest } from './transport.js';
 
 /** Ordena cidades por data de check-in, depois check-out, depois nome. */
@@ -23,8 +23,11 @@ export function sortCitiesByDate(state) {
 }
 
 /**
- * Café da manhã automático (item 4.3). Para cada cidade com `breakfastIncluded`,
- * garante uma linha "Café da manhã" por dia, com o local = nome do hotel.
+ * Café da manhã automático (item 4.3, corrigido).
+ * Você dorme a noite do check-in e toma café na MANHÃ SEGUINTE. Logo, o café
+ * cai nos dias `start+1 .. end` — ou seja, **não** há café no dia do check-in
+ * (você chega e dorme) e **há** café no dia do check-out (você toma antes de
+ * sair). O número de cafés continua igual ao número de diárias.
  * A linha carrega `autoBreakfast: true`; ao editá-la, o store limpa essa marca
  * (vira manual). Ao desmarcar o café da cidade, as linhas AINDA automáticas são
  * removidas; as que o usuário editou permanecem.
@@ -33,7 +36,11 @@ function applyAutoBreakfast(state) {
   const wanted = new Map(); // date -> { hotel, city }
   state.cities.forEach((c) => {
     if (!c.breakfastIncluded || !c.start || !c.end) return;
-    for (let d = new Date(c.start + 'T00:00'); d < new Date(c.end + 'T00:00'); d.setDate(d.getDate() + 1)) {
+    // uma manhã por noite dormida: começa no dia SEGUINTE ao check-in e vai até o check-out
+    const first = new Date(c.start + 'T00:00');
+    first.setDate(first.getDate() + 1);
+    const last = new Date(c.end + 'T00:00');
+    for (let d = first; d <= last; d.setDate(d.getDate() + 1)) {
       wanted.set(d.toISOString().slice(0, 10), { hotel: c.hotel || '', city: c.city });
     }
   });
@@ -94,22 +101,15 @@ function applyAutoHomeTransports(state) {
 }
 
 /**
- * Geração automática por data. Atrações e Outras seguem com 1 linha por dia;
- * Alimentação NÃO é mais pré-gerada (item 4.4). Depois aplica café da manhã
- * automático e os transportes de/para Casa, e reatribui cidade/período.
+ * Geração automática por data. Nada de itens vazios: o dia nasce limpo e a
+ * pessoa adiciona o que quiser com os botões "+" (nem atração, nem outra
+ * despesa, nem refeição são pré-criadas). O que é gerado automaticamente tem
+ * razão de ser: o café da manhã incluso na hospedagem e os transportes de/para
+ * "Casa". Depois, reatribui cidade/período dos itens existentes.
  * Muta `state` no lugar.
  */
 export function ensureGenerated(state) {
   sortCitiesByDate(state);
-  const dates = datesFromCities(state);
-  dates.forEach(({ date, city }) => {
-    if (!state.attractions.some((x) => x.date === date)) {
-      state.attractions.push({ id: uid(), date, city, time: '09:00', period: 'Manhã', name: '', cost: 0, status: 'Planejado' });
-    }
-    if (!state.otherExpenses.some((x) => x.date === date)) {
-      state.otherExpenses.push({ id: uid(), date, city, name: '', cost: 0, status: 'Planejado' });
-    }
-  });
 
   applyAutoBreakfast(state);
   applyAutoHomeTransports(state);
