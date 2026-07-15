@@ -75,7 +75,23 @@ body{
   line-height:1.5;
   color:var(--text);
   background:var(--bg);
-  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+}
+
+/* ---------- App-shell: barra inferior é layout, não position:fixed ----------
+   O problema clássico do rodapé "solto" vem de position:fixed em navegadores
+   mobile (barra de endereço dinâmica) e de conteúdo de altura variável. Aqui a
+   tela vira uma coluna de altura de viewport: cabeçalho e barra são fixos por
+   serem itens de layout, e SÓ o miolo rola. Transform no cartão e tamanho do
+   dia deixam de afetar a barra. */
+.app-shell{
+  display:flex;flex-direction:column;
+  height:100vh;height:100dvh;
+  overflow:hidden;
+}
+.app-shell > main{
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  order:2;
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -102,7 +118,7 @@ p{margin:0 0 var(--sp-3)}
 
 /* ---------- Cabeçalho ---------- */
 .appbar{
-  position:sticky;top:0;z-index:30;
+  flex:0 0 auto;order:1;z-index:30;
   background:var(--surface);
   border-bottom:1px solid var(--line);
   padding:calc(var(--sp-3) + env(safe-area-inset-top)) 0 var(--sp-3);
@@ -267,9 +283,9 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
 .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-4)}
 .sheet-head h3{margin:0}
 
-/* ---------- Navegação inferior: 5 destinos ---------- */
+/* ---------- Navegação inferior: 5 destinos (item de layout, não fixed) ---------- */
 .tabbar{
-  position:fixed;bottom:0;left:0;right:0;z-index:40;
+  flex:0 0 auto;order:3;z-index:40;
   display:grid;grid-template-columns:repeat(5,1fr);
   background:var(--surface);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom);
@@ -287,15 +303,15 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
 
 /* ---------- Desktop: folga, não recursos a mais ---------- */
 @media (min-width:768px){
-  body{padding-bottom:0}
   .container{padding:0 var(--sp-5)}
   .screen{padding:var(--sp-5) 0 var(--sp-6)}
   .tabbar{
-    position:sticky;top:0;bottom:auto;
+    order:1;
     grid-template-columns:repeat(5,auto);justify-content:center;gap:var(--sp-2);
     border-top:0;border-bottom:1px solid var(--line);
     padding:var(--sp-2) 0;
   }
+  .app-shell > main{order:2}
   .tabbar button{min-height:48px;flex-direction:row;gap:var(--sp-2);padding:0 var(--sp-4);border-radius:var(--r-1);font-size:var(--fs-2)}
   .tabbar button:hover{background:var(--surface-2)}
   .sheet-backdrop{align-items:center}
@@ -365,16 +381,12 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
   background:var(--city-soft);
 }
 
-/* ---------- Menu inferior: fixo em todas as telas, inclusive Dias ---------- */
-/* `will-change`/`transform` no cartão de Dias cria um contexto que pode
-   "prender" elementos fixos; isolar a barra num contexto próprio garante que
-   ela nunca acompanhe a rolagem nem o gesto de swipe. */
-@media (max-width:767px){
-  .tabbar{
-    position:fixed;bottom:0;left:0;right:0;
-    z-index:50;
-    transform:translateZ(0);
-    will-change:auto;
-  }
-  body{padding-bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom))}
-}
+/* ---------- Contenção do swipe: o transform do cartão não escapa dele ---------- */
+/* Com o app-shell, a barra já não é fixed. Ainda assim, manter o cartão como
+   contexto isolado evita que sua animação afete o layout ao redor. */
+.dias-card{contain:layout paint}
+
+/* ---------- Reordenar paradas (arrastar) ---------- */
+.stop-handle{display:inline-flex;align-items:center;user-select:none}
+.stop-dragging{opacity:.5}
+.stop-over{background:var(--accent-soft);box-shadow:inset 0 2px 0 var(--accent)}
