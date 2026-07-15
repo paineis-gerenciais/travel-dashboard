@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useTrip } from '../store/TripProvider.jsx';
 import { useTrips } from '../store/TripsProvider.jsx';
 import PresenceBar from './PresenceBar.jsx';
@@ -23,6 +23,7 @@ const TAB_KEY = 'trip_active_tab';
 export default function App({ user, onLogout, theme, toggleTheme }) {
   const { tripName, dirty, state } = useTrip();
   const { activeTripId } = useTrips();
+  const mainRef = useRef(null);
 
   // F5 mantém a tela atual (item 5.1 do plano mestre).
   const [active, setActive] = useState(() => {
@@ -41,11 +42,12 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
 
   const navigate = (id) => {
     setActive(id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // a rolagem agora vive no <main> (app-shell), não na janela
+    if (mainRef.current) mainRef.current.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <>
+    <div className="app-shell">
       <header className="appbar">
         <div className="container">
           <div className="appbar-title">
@@ -70,7 +72,7 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
         ))}
       </nav>
 
-      <main>
+      <main ref={mainRef}>
         <Suspense fallback={<div className="container screen"><p className="t2">Carregando…</p></div>}>
           <ActiveComponent
             user={user}
@@ -82,6 +84,6 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
           />
         </Suspense>
       </main>
-    </>
+    </div>
   );
 }

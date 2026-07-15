@@ -102,6 +102,9 @@ export default function Dias({ tripId, onNavigate }) {
   const onTouchMove = (e) => {
     if (!gesture.current.dragging) return;
     let dx = e.touches[0].clientX - gesture.current.startX;
+    // rigidez: o cartão acompanha o dedo com resistência (não 1:1), e resiste
+    // ainda mais nas pontas da viagem, onde não há para onde ir.
+    dx *= 0.6;
     if ((i === 0 && dx > 0) || (i === dates.length - 1 && dx < 0)) dx *= 0.35;
     gesture.current.dx = dx;
     if (cardRef.current) cardRef.current.style.transform = `translateX(${dx}px)`;
@@ -112,7 +115,8 @@ export default function Dias({ tripId, onNavigate }) {
     const { dx, width } = gesture.current;
     const el = cardRef.current;
     if (!el) return;
-    const threshold = Math.min(90, width * 0.22);
+    // limiar maior: exige um gesto mais decidido para trocar de dia
+    const threshold = Math.min(140, width * 0.38);
     if (dx <= -threshold && i < dates.length - 1) {
       el.style.transition = 'transform 160ms ease';
       el.style.transform = `translateX(-${width}px)`;
@@ -137,7 +141,7 @@ export default function Dias({ tripId, onNavigate }) {
 
         <div
           ref={cardRef}
-          className={`card stack city-edge ${cityClass}`}
+          className={`card stack city-edge dias-card ${cityClass}`}
           style={{ touchAction: 'pan-y', willChange: 'transform' }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
