@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTrips } from '../store/TripsProvider.jsx';
 import { blankState, SUBTITLES } from '../domain/state.js';
+import { randomQuote } from '../lib/quotes.js';
 import { Row, Sheet, EmptyState } from './ui.jsx';
+import SettingsSheet from './SettingsSheet.jsx';
 
 function templateState() {
   const base = new Date();
@@ -19,11 +21,19 @@ function templateState() {
   return s;
 }
 
-export default function TripPicker({ onLogout, theme, toggleTheme }) {
+/** Nome de exibição com fallback: nome cadastrado → e-mail → celular → "Viajante". */
+function greetingName(user) {
+  return user.displayName || user.email || user.phoneNumber || 'Viajante';
+}
+
+export default function TripPicker({ onLogout, theme, toggleTheme, refreshUser }) {
   const { trips, user, actions } = useTrips();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  // sorteia uma vez por visita à tela, não a cada re-render
+  const [quote] = useState(randomQuote);
 
   const create = async (seed) => {
     setBusy(true);
@@ -33,12 +43,20 @@ export default function TripPicker({ onLogout, theme, toggleTheme }) {
     } finally { setBusy(false); }
   };
 
+  const closeSettings = () => {
+    setShowSettings(false);
+    refreshUser?.(); // reflete nome/celular/e-mail vinculados sem precisar relogar
+  };
+
   return (
     <>
       <header className="appbar">
         <div className="container">
           <h1>Minhas viagens</h1>
           <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+            <button className="btn-ghost btn-sm" aria-label="Configurações" onClick={() => setShowSettings(true)}>
+              ⚙️
+            </button>
             <button className="btn-ghost btn-sm" aria-label="Alternar tema" onClick={toggleTheme}>
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
@@ -49,6 +67,13 @@ export default function TripPicker({ onLogout, theme, toggleTheme }) {
 
       <div className="screen">
         <div className="container stack">
+          <div className="card" style={{ background: 'var(--accent-soft)', border: 0 }}>
+            <p style={{ margin: 0, fontSize: 'var(--fs-4)', fontWeight: 600 }}>
+              Olá {greetingName(user)}, bem-vindo ao seu planejador de viagens!
+            </p>
+            <p className="small t2" style={{ margin: '6px 0 0', fontStyle: 'italic' }}>{quote}</p>
+          </div>
+
           <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
             <input
               placeholder="Nome da viagem"
@@ -94,6 +119,8 @@ export default function TripPicker({ onLogout, theme, toggleTheme }) {
           )}
         </div>
       </div>
+
+      {showSettings && <SettingsSheet user={user} onClose={closeSettings} />}
 
       {confirmDel && (
         <Sheet title="Excluir viagem" onClose={() => setConfirmDel(null)}>

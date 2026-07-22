@@ -22,7 +22,12 @@ const inviteId = (tripId, email) => `${tripId}_${lower(email)}`;
 export async function upsertUserProfile(user) {
   await setDoc(
     doc(db, 'users', user.uid),
-    { email: lower(user.email), displayName: user.displayName || user.email || 'Usuário', updatedAt: serverTimestamp() },
+    {
+      email: lower(user.email),
+      phoneNumber: user.phoneNumber || null,
+      displayName: user.displayName || user.email || user.phoneNumber || 'Usuário',
+      updatedAt: serverTimestamp(),
+    },
     { merge: true }
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate, money, num } from '../../domain/format.js';
-import { allPlanningDates, cityForDate, tripDayFlow, validateCityCoverage, cityColorClass, HOME } from '../../domain/dates.js';
+import { allPlanningDates, cityForDate, tripDayFlow, validateCityCoverage, cityColorClass, itemTimeMinutes, HOME } from '../../domain/dates.js';
 import {
   getTransportDate, getTransportOrigin, getTransportDest, getTransportMode,
   getTransportDurationMinutes, minutesToLabel,
@@ -82,6 +82,15 @@ export default function Dias({ tripId, onNavigate }) {
   const items = dayItems(state, date);
   const { hosting, transports, foods, attractions, others } = items;
   const total = dayTotal(items);
+  // Item 6: hotel fica separado (renderizado à parte); os demais se mesclam
+  // numa única lista, ordenada por horário (real ou aproximado — ver
+  // itemTimeMinutes no domínio).
+  const timeline = [
+    ...transports.map((item) => ({ kind: 'transports', item })),
+    ...foods.map((item) => ({ kind: 'foodItems', item })),
+    ...attractions.map((item) => ({ kind: 'attractions', item })),
+    ...others.map((item) => ({ kind: 'otherExpenses', item })),
+  ].sort((a, b) => itemTimeMinutes(a.kind, a.item) - itemTimeMinutes(b.kind, b.item));
   const overlap = coverage.overlaps.find((o) => o.date === date);
   const flowLabel = flow.from && flow.to && flow.from !== flow.to ? `${flow.from} → ${flow.to}` : (flow.to || flow.from);
   const isHome = flow.from === HOME || flow.to === HOME;
@@ -166,75 +175,77 @@ export default function Dias({ tripId, onNavigate }) {
             </Banner>
           )}
 
-          <div className="card card-flush">
-            {hosting && (
+          {hosting && (
+            <div className="card card-flush">
               <Row
                 icon="🛏️"
                 title={hosting.hotel || hosting.city}
                 sub={hosting.breakfastIncluded ? `${hosting.city} · café da manhã incluso` : hosting.city}
                 value={<button className="btn-ghost btn-sm" onClick={() => onNavigate('cidades')}>Editar</button>}
               />
+            </div>
+          )}
+
+          <div className="card card-flush">
+            {timeline.length === 0 && (
+              <p className="small t2" style={{ padding: 'var(--sp-4)', margin: 0 }}>
+                Nada por aqui ainda — use os botões abaixo para adicionar.
+              </p>
             )}
 
-            {transports.map((x) => {
-              const r = state.transports.indexOf(x);
-              const dur = getTransportDurationMinutes(x);
-              return (
-                <Row
-                  key={x.id}
-                  icon="🚆"
-                  cancelled={isCancelled(x)}
-                  title={`${getTransportMode(x) || 'Transporte'}${x.time ? ` · ${x.time}` : ''}${dur ? ` · ${minutesToLabel(dur)}` : ''}`}
-                  sub={`${getTransportOrigin(x) || '—'} → ${getTransportDest(x) || '—'}`}
-                  value={<span className="num">{money(num(x.cost))}</span>}
-                >
-                  <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', r, 'status', v)} />
-                  <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'transports', index: r })}>Editar</button>
-                  <CommentThread tripId={tripId} itemKey={`transports:${x.id}`} />
-                </Row>
-              );
-            })}
-
-            {foods.map((x) => {
-              const r = state.foodItems.indexOf(x);
-              return (
-                <Row
-                  key={x.id}
-                  icon={x.autoBreakfast ? '☕' : '🍽️'}
-                  cancelled={isCancelled(x)}
-                  title={x.type || 'Refeição'}
-                  sub={x.autoBreakfast
-                    ? `${x.place || 'hotel'} · incluso na hospedagem`
-                    : (x.place || 'Sem local')}
-                  value={<span className="num">{money(num(x.cost))}</span>}
-                >
-                  <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', r, 'status', v)} />
-                  <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'foodItems', index: r })}>Editar</button>
-                  <CommentThread tripId={tripId} itemKey={`foodItems:${x.id}`} />
-                </Row>
-              );
-            })}
-
-            {attractions.map((x) => {
-              const r = state.attractions.indexOf(x);
-              return (
-                <Row
-                  key={x.id}
-                  icon="🎟️"
-                  cancelled={isCancelled(x)}
-                  title={x.name || 'Atração'}
-                  sub={x.time ? `${x.time} · ${x.period}` : x.period}
-                  value={<span className="num">{money(num(x.cost))}</span>}
-                >
-                  <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', r, 'status', v)} />
-                  <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'attractions', index: r })}>Editar</button>
-                  <CommentThread tripId={tripId} itemKey={`attractions:${x.id}`} />
-                </Row>
-              );
-            })}
-
-            {others.map((x) => {
-              const r = state.otherExpenses.indexOf(x);
+            {timeline.map(({ kind, item: x }) => {
+              const r = state[kind].indexOf(x);
+              if (kind === 'transports') {
+                const dur = getTransportDurationMinutes(x);
+                return (
+                  <Row
+                    key={x.id}
+                    icon="🚆"
+                    cancelled={isCancelled(x)}
+                    title={`${getTransportMode(x) || 'Transporte'}${x.time ? ` · ${x.time}` : ''}${dur ? ` · ${minutesToLabel(dur)}` : ''}`}
+                    sub={`${getTransportOrigin(x) || '—'} → ${getTransportDest(x) || '—'}`}
+                    value={<span className="num">{money(num(x.cost))}</span>}
+                  >
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', r, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'transports', index: r })}>Editar</button>
+                    <CommentThread tripId={tripId} itemKey={`transports:${x.id}`} />
+                  </Row>
+                );
+              }
+              if (kind === 'foodItems') {
+                return (
+                  <Row
+                    key={x.id}
+                    icon={x.autoBreakfast ? '☕' : '🍽️'}
+                    cancelled={isCancelled(x)}
+                    title={x.type || 'Refeição'}
+                    sub={x.autoBreakfast
+                      ? `${x.place || 'hotel'} · incluso na hospedagem`
+                      : (x.place || 'Sem local')}
+                    value={<span className="num">{money(num(x.cost))}</span>}
+                  >
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', r, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'foodItems', index: r })}>Editar</button>
+                    <CommentThread tripId={tripId} itemKey={`foodItems:${x.id}`} />
+                  </Row>
+                );
+              }
+              if (kind === 'attractions') {
+                return (
+                  <Row
+                    key={x.id}
+                    icon="🎟️"
+                    cancelled={isCancelled(x)}
+                    title={x.name || 'Atração'}
+                    sub={x.time ? `${x.time} · ${x.period}` : x.period}
+                    value={<span className="num">{money(num(x.cost))}</span>}
+                  >
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', r, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'attractions', index: r })}>Editar</button>
+                    <CommentThread tripId={tripId} itemKey={`attractions:${x.id}`} />
+                  </Row>
+                );
+              }
               return (
                 <Row
                   key={x.id}
@@ -268,6 +279,7 @@ export default function Dias({ tripId, onNavigate }) {
         <p className="tiny t3 no-print" style={{ textAlign: 'center' }}>
           Arraste o cartão para o lado para trocar de dia.
         </p>
+
       </div>
 
       {editing && (
@@ -373,7 +385,7 @@ function ItemSheet({ kind, index, onClose }) {
           <div><StatusChip value={item.status} onChange={(v) => set('status', v)} /></div>
         </div>
 
-        <div className="stack-2" style={{ marginTop: 'var(--sp-2)' }}>
+        <div className="sheet-footer stack-2">
           <button className="btn-primary btn-block" onClick={onClose}>Concluir</button>
           <button className="btn-danger btn-block" onClick={remove}>Excluir item</button>
         </div>

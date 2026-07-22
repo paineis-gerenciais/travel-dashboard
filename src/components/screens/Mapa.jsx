@@ -11,10 +11,6 @@ import RouteEditorModal from '../RouteEditorModal.jsx';
 
 function dayMapPoints(state, date) {
   const pts = [];
-  const city = state.cities.find((c) => date >= c.start && date < c.end);
-  if (city && (city.hotel || city.city)) {
-    pts.push({ label: city.hotel || city.city, query: (city.hotel || '') + ' ' + city.city });
-  }
   state.transports
     .filter((x) => getTransportDate(x) === date)
     .forEach((x) => {
@@ -28,6 +24,11 @@ function dayMapPoints(state, date) {
   state.attractions
     .filter((x) => x.date === date && x.name)
     .forEach((x) => pts.push({ label: x.name, query: (x.name + ' ' + (x.city || '')).trim() }));
+  // Item 7: hotel por último — é para onde se volta ao fim do dia, então fecha a rota.
+  const city = state.cities.find((c) => date >= c.start && date < c.end);
+  if (city && (city.hotel || city.city)) {
+    pts.push({ label: city.hotel || city.city, query: (city.hotel || '') + ' ' + city.city });
+  }
   return pts.map((p) => ({ ...p, query: String(p.query).trim() }));
 }
 

@@ -390,3 +390,16 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
 .stop-handle{display:inline-flex;align-items:center;user-select:none}
 .stop-dragging{opacity:.5}
 .stop-over{background:var(--accent-soft);box-shadow:inset 0 2px 0 var(--accent)}
+
+/* ---------- Rodapé de ações do Sheet: sempre alcançável (correção iPhone) ----------
+   Fica "grudado" na base da própria área rolável do sheet (que é o .sheet, via
+   overflow-y:auto), então continua visível mesmo quando o Sheet.jsx encolhe a
+   altura pela VisualViewport (teclado aberto). Sem isso, o botão "Excluir"
+   podia ficar atrás do teclado no iPhone, sem jeito de rolar até ele. */
+.sheet-footer{
+  position:sticky;bottom:calc(-1 * var(--sp-5));
+  margin:var(--sp-2) calc(-1 * var(--sp-4)) calc(-1 * var(--sp-5));
+  padding:var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom));
+  background:var(--surface);
+  border-top:1px solid var(--line);
+}
