@@ -64,9 +64,31 @@ export function Sheet({ title, onClose, children }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Correção do "botão excluir escondido no iPhone": com o teclado aberto, o
+  // Safari reduz a área VISÍVEL da tela sem reduzir o `100vh` de layout — um
+  // sheet com altura em vh fica, na prática, maior que o espaço visível, e a
+  // parte de baixo (o rodapé de ações) some atrás do teclado sem jeito de
+  // rolar até lá. A VisualViewport API dá a altura real e visível; usamos ela
+  // para limitar a altura do sheet dinamicamente, sempre que disponível.
+  const [maxH, setMaxH] = useState(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setMaxH(vv.height * 0.92);
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+  }, []);
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="sheet"
+        style={maxH ? { maxHeight: maxH } : undefined}
+        role="dialog" aria-modal="true" aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-grip" aria-hidden="true" />
         <div className="sheet-head">
           <h3>{title}</h3>

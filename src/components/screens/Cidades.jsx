@@ -173,7 +173,7 @@ function CitySheet({ index, onClose, onDelete }) {
           <textarea value={c.notes || ''} onChange={(e) => actions.setCityField(index, 'notes', e.target.value)} />
         </Field>
 
-        <div className="stack-2" style={{ marginTop: 'var(--sp-2)' }}>
+        <div className="sheet-footer stack-2">
           <button className="btn-primary btn-block" onClick={onClose}>Concluir</button>
           <button className="btn-danger btn-block" onClick={onDelete}>Excluir cidade</button>
         </div>

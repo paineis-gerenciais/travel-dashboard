@@ -217,6 +217,25 @@ export function tripDayFlow(state, date) {
 }
 
 /**
+ * Horário (em minutos desde 00:00) de um item, para ORDENAR os itens de um dia
+ * cronologicamente na tela Dias. Transporte e atração têm campo `time` de
+ * verdade; refeição não tem horário próprio, então usa uma âncora aproximada
+ * pelo tipo (café da manhã ~8h, almoço ~12h, jantar ~19h — a mesma ordem que
+ * `foodOrder` já usava); outra despesa não tem noção de horário, então fica
+ * ordenada por último, de forma estável.
+ */
+const FOOD_TIME_ANCHOR = { 1: 8 * 60, 2: 12 * 60, 3: 19 * 60, 4: 10 * 60, 5: 15 * 60 };
+
+export function itemTimeMinutes(kind, item) {
+  if ((kind === 'transports' || kind === 'attractions') && item.time) {
+    const [h, m] = String(item.time).split(':').map(Number);
+    if (!Number.isNaN(h)) return h * 60 + (m || 0);
+  }
+  if (kind === 'foodItems') return FOOD_TIME_ANCHOR[foodOrder(item.type)] ?? 15 * 60;
+  return 24 * 60; // otherExpenses e casos sem horário: por último
+}
+
+/**
  * Verifica a cobertura de datas por cidade (item 4.2). Retorna:
  * - overlaps: dias cobertos por 2+ cidades ao mesmo tempo (erro real; o padrão
  *   check-out/check-in NÃO conta, pois o intervalo é [start, end) exclusivo).

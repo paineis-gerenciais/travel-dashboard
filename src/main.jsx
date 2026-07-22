@@ -20,10 +20,10 @@ function Loading({ text = 'Carregando…' }) {
   );
 }
 
-function Shell({ user, onLogout, theme, toggleTheme }) {
+function Shell({ user, onLogout, theme, toggleTheme, refreshUser }) {
   const { activeTripId, ready } = useTrips();
   if (!ready) return <Loading text="Carregando suas viagens…" />;
-  if (!activeTripId) return <TripPicker onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />;
+  if (!activeTripId) return <TripPicker onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} refreshUser={refreshUser} />;
   return (
     <TripProvider tripId={activeTripId} user={user}>
       <Suspense fallback={<Loading text="Abrindo viagem…" />}>
@@ -34,7 +34,7 @@ function Shell({ user, onLogout, theme, toggleTheme }) {
 }
 
 function Root() {
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, login, logout, loginWithPhoneStart, loginWithPhoneConfirm, refreshUser } = useAuth();
   const { theme, toggle } = useTheme();
   const [loginError, setLoginError] = useState('');
 
@@ -47,12 +47,14 @@ function Root() {
           setLoginError('');
           try { await login(); } catch (e) { setLoginError('Não foi possível entrar: ' + e.message); }
         }}
+        onLoginPhoneStart={loginWithPhoneStart}
+        onLoginPhoneConfirm={loginWithPhoneConfirm}
       />
     );
   }
   return (
     <TripsProvider user={user}>
-      <Shell user={user} onLogout={logout} theme={theme} toggleTheme={toggle} />
+      <Shell user={user} onLogout={logout} theme={theme} toggleTheme={toggle} refreshUser={refreshUser} />
     </TripsProvider>
   );
 }

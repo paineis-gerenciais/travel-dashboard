@@ -62,6 +62,27 @@ export default function Custos() {
         </div>
 
         <div className="card stack">
+          <div className="field">
+            <label htmlFor="travelers">Viajantes</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+              <button
+                type="button" className="btn-icon" aria-label="Diminuir viajantes"
+                onClick={() => actions.setTravelers(Math.max(1, trav - 1))}
+              >−</button>
+              <input
+                id="travelers" type="number" min="1" inputMode="numeric"
+                value={trav} onChange={(e) => actions.setTravelers(e.target.value)}
+                style={{ maxWidth: 90, textAlign: 'center' }}
+              />
+              <button
+                type="button" className="btn-icon" aria-label="Aumentar viajantes"
+                onClick={() => actions.setTravelers(trav + 1)}
+              >+</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card stack">
           <div className="row-between">
             <h3 style={{ margin: 0 }}>Distribuição</h3>
             <select
@@ -75,12 +96,20 @@ export default function Custos() {
               <option value="dia">Por dia</option>
             </select>
           </div>
+          <p className="small t2" style={{ margin: 0 }}>
+            Cada barra mostra a participação de {view === 'categoria' ? 'cada categoria' : view === 'cidade' ? 'cada cidade' : 'cada dia'} no total da viagem — quanto mais longa, maior a fatia do gasto.
+          </p>
           <div className="stack-2">
             {rows.map((r, i) => (
               <div key={r.label} className="stack-2" style={{ gap: 4 }}>
                 <div className="row-between">
-                  <span className="small">{r.label}</span>
-                  <span className="small num" style={{ fontWeight: 600 }}>{money(r.value)}</span>
+                  <span className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: palette(i), display: 'inline-block', flex: '0 0 auto' }} />
+                    {r.label}
+                  </span>
+                  <span className="small num" style={{ fontWeight: 600 }}>
+                    {money(r.value)} <span className="t3">· {t.total ? Math.round((r.value / t.total) * 100) : 0}%</span>
+                  </span>
                 </div>
                 <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
                   <div style={{ width: `${(r.value / maxRow) * 100}%`, height: '100%', background: palette(i), borderRadius: 'var(--r-pill)' }} />
@@ -94,22 +123,11 @@ export default function Custos() {
           <h3 style={{ margin: 0 }}>Por status</h3>
           <div className="stack-2">
             {statusT.map((s) => (
-              <div key={s.status} className="row-between">
-                <span className="small">{s.status}</span>
-                <span className="small num">{money(s.total)}</span>
+              <div key={s.label} className="row-between">
+                <span className="small">{s.label} <span className="t3">· {s.count}</span></span>
+                <span className="small num">{money(s.value)}</span>
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="card stack">
-          <div className="field">
-            <label htmlFor="travelers">Viajantes</label>
-            <input
-              id="travelers" type="number" min="1" inputMode="numeric"
-              value={trav} onChange={(e) => actions.setTravelers(e.target.value)}
-              style={{ maxWidth: 120 }}
-            />
           </div>
         </div>
 
