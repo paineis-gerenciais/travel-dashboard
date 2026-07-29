@@ -175,3 +175,27 @@ describe('feed de atividade (Fase 5, item 5.F)', () => {
     );
   });
 });
+
+describe('feedback in-app (T-1.2)', () => {
+  it('usuário autenticado cria o próprio feedback', async () => {
+    const db = ctx(DONO).firestore();
+    await assertSucceeds(
+      setDoc(doc(collection(db, 'feedback')), { category: 'ideia', text: 'oi', authorUid: DONO.sub })
+    );
+  });
+
+  it('NÃO pode criar feedback em nome de outra pessoa', async () => {
+    const db = ctx(DONO).firestore();
+    await assertFails(
+      setDoc(doc(collection(db, 'feedback')), { category: 'ideia', text: 'oi', authorUid: CONVIDADO.sub })
+    );
+  });
+
+  it('ninguém lê feedback pelo cliente (nem o próprio autor)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (admin) => {
+      await setDoc(doc(admin.firestore(), 'feedback', 'f1'), { category: 'bug', text: 'x', authorUid: DONO.sub });
+    });
+    await assertFails(getDoc(doc(ctx(DONO).firestore(), 'feedback', 'f1')));
+    await assertFails(getDocs(collection(ctx(DONO).firestore(), 'feedback')));
+  });
+});

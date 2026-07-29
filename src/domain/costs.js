@@ -102,8 +102,30 @@ export function expenseStatusTotals(state) {
     values[st] += num(value);
     counts[st] += 1;
   }
-  state.cities.forEach((c) => add(c.status, daysBetween(c.start, c.end) * num(c.nightly)));
-  [...state.transports, ...state.foodItems, ...state.attractions, ...state.otherExpenses].forEach(
+  // HOSPEDAGEM — T-C.1, causa-raiz nº1 do bug do "Reservado".
+  // Antes: daysBetween(c.start, c.end) * nightly, cidade a cidade. Isso DIVERGIA
+  // de totals(), que conta uma diária por DATA de planejamento, atribuída à
+  // cidade que cobre aquela data. Com cidades sobrepostas (o app avisa, mas
+  // permite), a diária era contada duas vezes aqui e uma só no total — inflando
+  // o status da(s) cidade(s) envolvida(s). Agora usamos a MESMA fonte de
+  // verdade do totals(), então os dois não podem mais divergir.
+  const nightsByCity = new Map();
+  datesFromCities(state).forEach(({ date }) => {
+    const c = state.cities.find((x) => date >= x.start && date < x.end);
+    if (c) nightsByCity.set(c.id, (nightsByCity.get(c.id) || 0) + 1);
+  });
+  state.cities.forEach((c) => {
+    const nights = nightsByCity.get(c.id) || 0;
+    if (nights > 0) add(c.status, nights * num(c.nightly));
+  });
+
+  // TRANSPORTE — T-C.1, causa-raiz nº2.
+  // Antes lia num(x.cost) direto; totals() usa getTransportCost(), que também
+  // entende os nomes de campo legados (custo/valor) vindos da versão Apps
+  // Script. Transportes importados apareciam como 0 aqui e com valor no total.
+  state.transports.forEach((x) => add(x.status, getTransportCost(x)));
+
+  [...state.foodItems, ...state.attractions, ...state.otherExpenses].forEach(
     (x) => add(x.status, num(x.cost))
   );
   const total = labels.reduce((sum, l) => sum + values[l], 0);

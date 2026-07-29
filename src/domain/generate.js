@@ -33,7 +33,7 @@ export function sortCitiesByDate(state) {
  * removidas; as que o usuário editou permanecem.
  */
 function applyAutoBreakfast(state) {
-  const wanted = new Map(); // date -> { hotel, city }
+  const wanted = new Map(); // date -> { hotel, city, status }
   state.cities.forEach((c) => {
     if (!c.breakfastIncluded || !c.start || !c.end) return;
     // uma manhã por noite dormida: começa no dia SEGUINTE ao check-in e vai até o check-out
@@ -41,7 +41,10 @@ function applyAutoBreakfast(state) {
     first.setDate(first.getDate() + 1);
     const last = new Date(c.end + 'T00:00');
     for (let d = first; d <= last; d.setDate(d.getDate() + 1)) {
-      wanted.set(d.toISOString().slice(0, 10), { hotel: c.hotel || '', city: c.city });
+      // T-C.2: o café automático espelha o STATUS da hospedagem. Sem isto ele
+      // nascia sempre 'Planejado' e distorcia os totais por status quando o
+      // hotel estava Reservado/Pago.
+      wanted.set(d.toISOString().slice(0, 10), { hotel: c.hotel || '', city: c.city, status: c.status || 'Planejado' });
     }
   });
 
@@ -55,6 +58,7 @@ function applyAutoBreakfast(state) {
       auto.place = info.hotel; // mantém sincronizado com o hotel enquanto for automático
       auto.city = info.city;
       auto.type = 'Café da manhã';
+      auto.status = info.status; // T-C.2: segue o status da hospedagem enquanto for automático
       return;
     }
     // não cria se já existe um café da manhã manual naquele dia
@@ -62,7 +66,7 @@ function applyAutoBreakfast(state) {
     if (manual) return;
     state.foodItems.push({
       id: uid(), date, city: info.city, type: 'Café da manhã',
-      place: info.hotel, cost: 0, status: 'Planejado', autoBreakfast: true,
+      place: info.hotel, cost: 0, status: info.status, autoBreakfast: true,
     });
   });
 }
@@ -148,4 +152,36 @@ export function deleteCityCascade(state, index, removeRelated) {
     );
   }
   return state;
+}
+
+
+/**
+ * Clona o estado de uma viagem para criar outra (T-1.6).
+ * - Gera IDs novos para todos os itens (nada compartilhado com a original).
+ * - Opcionalmente desloca todas as datas em N dias (para reaproveitar um
+ *   roteiro num novo período).
+ * - NÃO copia membros, versões, comentários nem atividade — isso vive fora do
+ *   estado da viagem, e copiar seria vazamento de contexto entre viagens.
+ * - Reexecuta a geração automática, para que café da manhã e transportes de
+ *   Casa nasçam coerentes com as datas novas.
+ */
+export function cloneTripState(state, { shiftDays = 0 } = {}) {
+  const shift = (iso) => {
+    if (!iso || !shiftDays) return iso;
+    const d = new Date(iso + 'T00:00');
+    d.setDate(d.getDate() + shiftDays);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const copy = JSON.parse(JSON.stringify(state));
+
+  copy.cities = (copy.cities || []).map((c) => ({ ...c, id: uid(), start: shift(c.start), end: shift(c.end) }));
+  ['foodItems', 'attractions', 'otherExpenses'].forEach((k) => {
+    copy[k] = (copy[k] || []).map((x) => ({ ...x, id: uid(), date: shift(x.date) }));
+  });
+  copy.transports = (copy.transports || []).map((x) => ({ ...x, id: uid(), date: shift(x.date) }));
+  copy.checklist = (copy.checklist || []).map((x) => ({ ...x, id: uid() }));
+
+  ensureGenerated(copy);
+  return copy;
 }

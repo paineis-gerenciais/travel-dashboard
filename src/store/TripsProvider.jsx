@@ -5,6 +5,8 @@ import {
   subscribeMyTrips, createTrip as apiCreateTrip, deleteTrip as apiDeleteTrip,
   renameTrip as apiRenameTrip, acceptPendingInvites,
 } from '../lib/tripData.js';
+import { track } from '../lib/analytics.js';
+import { cloneTripState } from '../domain/generate.js';
 
 const Ctx = createContext(null);
 export const useTrips = () => useContext(Ctx);
@@ -49,6 +51,7 @@ export function TripsProvider({ user, children }) {
     closeTrip: () => setActiveTripId(null),
     async createTrip(name, seedState) {
       const id = await apiCreateTrip(user, name, seedState);
+      track('trip_created', { context: seedState ? 'template' : 'blank' });
       setActiveTripId(id);
       return id;
     },
@@ -57,6 +60,14 @@ export function TripsProvider({ user, children }) {
       if (activeTripId === id) setActiveTripId(null);
     },
     async renameTrip(id, name) { await apiRenameTrip(id, name); },
+    /** T-1.6: duplica uma viagem (estado clonado, sem membros/versões/comentários). */
+    async duplicateTrip(sourceState, name, shiftDays = 0) {
+      const seed = cloneTripState(sourceState, { shiftDays });
+      const id = await apiCreateTrip(user, name, seed);
+      track('trip_duplicated', { days: shiftDays });
+      setActiveTripId(id);
+      return id;
+    },
   };
 
   return <Ctx.Provider value={{ trips, activeTripId, ready, user, actions }}>{children}</Ctx.Provider>;

@@ -21,6 +21,7 @@ import {
   tripDayFlow,
   validateCityCoverage,
   cityColorIndex,
+  nearestDayIndex,
   HOME,
 } from '../dates.js';
 import {
@@ -33,7 +34,9 @@ import {
   costRowsByView,
   paidPct,
 } from '../costs.js';
-import { ensureGenerated, deleteCityCascade } from '../generate.js';
+import { ensureGenerated, deleteCityCascade, cloneTripState } from '../generate.js';
+import { splitSummary, settlements, participants } from '../split.js';
+import { pendingReminders } from '../../lib/reminders.js';
 import { gmaps, getTransportCost, durationToMinutes, minutesToLabel } from '../transport.js';
 
 /* ---------- Formatação e parsing ---------- */
@@ -388,5 +391,272 @@ describe('cityColorIndex', () => {
   it('Casa e vazio não recebem cor', () => {
     expect(cityColorIndex(HOME)).toBe(-1);
     expect(cityColorIndex('')).toBe(-1);
+  });
+});
+
+
+/* ---------- T-C.1 / T-C.2: totais por status ---------- */
+describe('expenseStatusTotals (T-C.1)', () => {
+  const val = (rows, label) => rows.find((r) => r.label === label).value;
+
+  it('INVARIANTE: soma dos status não-cancelados = total da viagem', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04', nightly: 100, status: 'Reservado' },
+        { id: 'b', city: 'Porto', start: '2026-06-04', end: '2026-06-06', nightly: 200, status: 'Pago' },
+      ],
+      transports: [{ id: 't1', date: '2026-06-01', cost: 50, status: 'Pago' }],
+      attractions: [{ id: 'x1', date: '2026-06-02', name: 'Museu', cost: 30, status: 'Planejado' }],
+      otherExpenses: [{ id: 'o1', date: '2026-06-02', name: 'Táxi', cost: 20, status: 'Cancelado' }],
+    });
+    ensureGenerated(state);
+    const rows = expenseStatusTotals(state);
+    const soma = val(rows, 'Planejado') + val(rows, 'Reservado') + val(rows, 'Pago');
+    expect(soma).toBe(totals(state).total);
+  });
+
+  it('hospedagem não é contada duas vezes quando as cidades se sobrepõem', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-05', nightly: 100, status: 'Reservado' },
+        { id: 'b', city: 'Porto', start: '2026-06-03', end: '2026-06-06', nightly: 100, status: 'Reservado' },
+      ],
+    });
+    const rows = expenseStatusTotals(state);
+    // 5 noites reais no período (01..05), não 4+3=7
+    expect(val(rows, 'Reservado')).toBe(totals(state).lodging);
+  });
+
+  it('transporte com campo de custo legado (custo/valor) entra no status certo', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-02', nightly: 0, status: 'Planejado' }],
+      transports: [{ id: 't1', date: '2026-06-01', custo: 90, status: 'Reservado' }],
+    });
+    const rows = expenseStatusTotals(state);
+    expect(val(rows, 'Reservado')).toBe(90);
+  });
+
+  it('cada status devolve label, value e count (contrato que a tela consome)', () => {
+    const rows = expenseStatusTotals(normalizeState({}));
+    expect(rows.map((r) => r.label)).toEqual(['Planejado', 'Reservado', 'Pago', 'Cancelado']);
+    rows.forEach((r) => {
+      expect(typeof r.value).toBe('number');
+      expect(typeof r.count).toBe('number');
+    });
+  });
+});
+
+describe('café da manhã automático herda o status da hospedagem (T-C.2)', () => {
+  it('nasce com o status da cidade e acompanha a mudança', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Porto', start: '2026-05-01', end: '2026-05-03', hotel: 'Pousada', nightly: 100, status: 'Reservado', breakfastIncluded: true }],
+    });
+    ensureGenerated(state);
+    let cafes = state.foodItems.filter((x) => x.autoBreakfast);
+    expect(cafes.length).toBe(2);
+    cafes.forEach((c) => expect(c.status).toBe('Reservado'));
+
+    state.cities[0].status = 'Pago';
+    ensureGenerated(state);
+    cafes = state.foodItems.filter((x) => x.autoBreakfast);
+    cafes.forEach((c) => expect(c.status).toBe('Pago'));
+  });
+
+  it('café editado (manual) NÃO é mais afetado pelo status da cidade', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Porto', start: '2026-05-01', end: '2026-05-03', hotel: 'Pousada', nightly: 100, status: 'Reservado', breakfastIncluded: true }],
+    });
+    ensureGenerated(state);
+    const adotado = state.foodItems.find((x) => x.autoBreakfast);
+    adotado.autoBreakfast = false;      // usuário editou -> virou manual
+    adotado.status = 'Planejado';
+    state.cities[0].status = 'Pago';
+    ensureGenerated(state);
+    expect(state.foodItems.find((x) => x.id === adotado.id).status).toBe('Planejado');
+  });
+});
+
+
+/* ---------- T-1.15: dia inicial da tela Dias ---------- */
+describe('nearestDayIndex', () => {
+  const dates = [
+    { date: '2026-06-01' }, { date: '2026-06-02' }, { date: '2026-06-03' },
+  ];
+  it('viagem em curso: vai para o dia de hoje', () => {
+    expect(nearestDayIndex(dates, '2026-06-02')).toBe(1);
+  });
+  it('viagem futura: vai para o primeiro dia', () => {
+    expect(nearestDayIndex(dates, '2026-01-01')).toBe(0);
+  });
+  it('viagem passada: vai para o último dia', () => {
+    expect(nearestDayIndex(dates, '2027-01-01')).toBe(2);
+  });
+  it('lista vazia não quebra', () => {
+    expect(nearestDayIndex([], '2026-06-02')).toBe(0);
+  });
+});
+
+
+/* ---------- T-1.6: duplicar viagem ---------- */
+describe('cloneTripState', () => {
+  const base = () => normalizeState({
+    cities: [{ id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04', nightly: 100, status: 'Reservado' }],
+    attractions: [{ id: 'x1', date: '2026-06-02', name: 'Museu', cost: 30, status: 'Planejado' }],
+    checklist: [{ id: 'c1', item: 'Passaporte', done: true, status: 'Concluído' }],
+  });
+
+  it('gera IDs novos (nada compartilhado com a original)', () => {
+    const orig = base();
+    const copy = cloneTripState(orig);
+    expect(copy.cities[0].id).not.toBe(orig.cities[0].id);
+    expect(copy.attractions[0].id).not.toBe(orig.attractions[0].id);
+    expect(copy.checklist[0].id).not.toBe(orig.checklist[0].id);
+  });
+
+  it('preserva o conteúdo e as datas quando não há deslocamento', () => {
+    const copy = cloneTripState(base());
+    expect(copy.cities[0].city).toBe('Lisboa');
+    expect(copy.cities[0].start).toBe('2026-06-01');
+    expect(copy.attractions[0].name).toBe('Museu');
+  });
+
+  it('desloca todas as datas quando pedido', () => {
+    const copy = cloneTripState(base(), { shiftDays: 30 });
+    expect(copy.cities[0].start).toBe('2026-07-01');
+    expect(copy.cities[0].end).toBe('2026-07-04');
+    expect(copy.attractions[0].date).toBe('2026-07-02');
+  });
+
+  it('não altera o estado original', () => {
+    const orig = base();
+    const antes = JSON.stringify(orig);
+    cloneTripState(orig, { shiftDays: 10 });
+    expect(JSON.stringify(orig)).toBe(antes);
+  });
+});
+
+
+/* ---------- T-1.7: divisão de despesas ---------- */
+describe('splitSummary / settlements', () => {
+  const state = () => normalizeState({
+    settings: { travelers: 2, participants: ['Ana', 'Bruno'] },
+    attractions: [
+      { id: 'a1', date: '2026-06-02', name: 'Museu', cost: 100, status: 'Planejado', paidBy: 'Ana' },
+      { id: 'a2', date: '2026-06-02', name: 'Passeio', cost: 60, status: 'Planejado', paidBy: 'Bruno' },
+    ],
+    otherExpenses: [
+      { id: 'o1', date: '2026-06-02', name: 'Táxi', cost: 40, status: 'Planejado' }, // sem paidBy
+      { id: 'o2', date: '2026-06-02', name: 'Cancelado', cost: 999, status: 'Cancelado', paidBy: 'Ana' },
+    ],
+  });
+
+  it('usa os participantes cadastrados', () => {
+    expect(participants(state())).toEqual(['Ana', 'Bruno']);
+  });
+
+  it('cai em rótulos genéricos quando não há participantes cadastrados', () => {
+    const s = normalizeState({ settings: { travelers: 3 } });
+    expect(participants(s)).toEqual(['Viajante 1', 'Viajante 2', 'Viajante 3']);
+  });
+
+  it('ignora itens cancelados (mesma regra do resto do app)', () => {
+    const r = splitSummary(state());
+    expect(r.total).toBe(200); // 100 + 60 + 40, sem os 999 cancelados
+  });
+
+  it('separa o que já tem pagador do que ainda não tem', () => {
+    const r = splitSummary(state());
+    expect(r.unassigned).toBe(40);
+    expect(r.rows.find((x) => x.person === 'Ana').paid).toBe(100);
+    expect(r.rows.find((x) => x.person === 'Bruno').paid).toBe(60);
+  });
+
+  it('calcula o saldo de cada um (pago − devido)', () => {
+    const r = splitSummary(state());
+    expect(r.share).toBe(100);   // 200 / 2
+    expect(r.rows.find((x) => x.person === 'Ana').balance).toBe(0);
+    expect(r.rows.find((x) => x.person === 'Bruno').balance).toBe(-40);
+  });
+
+  it('inclui a hospedagem no total do grupo como não atribuída', () => {
+    const r = splitSummary(state(), 300);
+    expect(r.total).toBe(500);
+    expect(r.unassigned).toBe(340);
+  });
+
+  it('acerto: quem deve paga a quem tem a receber', () => {
+    const s = normalizeState({
+      settings: { participants: ['Ana', 'Bruno'] },
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Tudo', cost: 200, status: 'Planejado', paidBy: 'Ana' }],
+    });
+    const acertos = settlements(splitSummary(s));
+    expect(acertos).toEqual([{ from: 'Bruno', to: 'Ana', valor: 100 }]);
+  });
+
+  it('sem dívidas, não gera acerto', () => {
+    const s = normalizeState({
+      settings: { participants: ['Ana', 'Bruno'] },
+      attractions: [
+        { id: 'a1', date: '2026-06-02', name: 'X', cost: 50, status: 'Planejado', paidBy: 'Ana' },
+        { id: 'a2', date: '2026-06-02', name: 'Y', cost: 50, status: 'Planejado', paidBy: 'Bruno' },
+      ],
+    });
+    expect(settlements(splitSummary(s))).toEqual([]);
+  });
+});
+
+
+/* ---------- T-1.11: lembretes locais ---------- */
+describe('pendingReminders', () => {
+  it('avisa de check-in e check-out de amanhã', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'a', city: 'Lisboa', start: '2026-06-02', end: '2026-06-05' },
+        { id: 'b', city: 'Porto', start: '2026-06-05', end: '2026-06-08' },
+      ],
+    });
+    const r = pendingReminders(state, '2026-06-01');
+    expect(r.some((x) => x.texto.includes('Check-in amanhã em Lisboa'))).toBe(true);
+  });
+
+  it('avisa de itens não pagos para amanhã', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-05' }],
+      attractions: [{ id: 'x', date: '2026-06-02', name: 'Museu', cost: 50, status: 'Reservado' }],
+    });
+    const r = pendingReminders(state, '2026-06-01');
+    expect(r.some((x) => x.texto.includes('não pago'))).toBe(true);
+  });
+
+  it('não avisa de item já pago nem cancelado', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-05' }],
+      attractions: [
+        { id: 'x', date: '2026-06-02', name: 'Pago', cost: 50, status: 'Pago' },
+        { id: 'y', date: '2026-06-02', name: 'Cancelado', cost: 50, status: 'Cancelado' },
+      ],
+    });
+    expect(pendingReminders(state, '2026-06-01').length).toBe(0);
+  });
+});
+
+
+/* ---------- Dias de planejamento incluem o dia de volta para Casa ---------- */
+describe('allPlanningDates após ensureGenerated', () => {
+  it('inclui o dia do check-out, por causa do transporte de volta para Casa', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Lisboa', start: '2030-06-01', end: '2030-06-04' }],
+    });
+    // sem geração automática: só as noites dormidas
+    expect(allPlanningDates(state).map((d) => d.date)).toEqual([
+      '2030-06-01', '2030-06-02', '2030-06-03',
+    ]);
+
+    ensureGenerated(state);
+    // com geração: o transporte automático de volta cai no check-out, e aquele
+    // dia passa a fazer parte da viagem (comportamento da Fase 4, item 4.5/4.6)
+    expect(allPlanningDates(state).map((d) => d.date)).toEqual([
+      '2030-06-01', '2030-06-02', '2030-06-03', '2030-06-04',
+    ]);
   });
 });

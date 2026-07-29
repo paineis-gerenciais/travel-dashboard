@@ -5,6 +5,7 @@ import { useTheme } from './store/useTheme.js';
 import { TripsProvider, useTrips } from './store/TripsProvider.jsx';
 import { TripProvider } from './store/TripProvider.jsx';
 import { installGlobalErrorHandlers } from './lib/logger.js';
+import { ToastProvider } from './components/ui.jsx';
 import Login from './components/Login.jsx';
 import App from './components/App.jsx';
 import TripPicker from './components/TripPicker.jsx';
@@ -34,7 +35,11 @@ function Shell({ user, onLogout, theme, toggleTheme, refreshUser }) {
 }
 
 function Root() {
-  const { user, loading, login, logout, loginWithPhoneStart, loginWithPhoneConfirm, refreshUser } = useAuth();
+  const {
+    user, loading, login, logout,
+    loginWithEmail, registerWithEmail, resetPassword,
+    loginWithPhoneStart, loginWithPhoneConfirm, refreshUser,
+  } = useAuth();
   const { theme, toggle } = useTheme();
   const [loginError, setLoginError] = useState('');
 
@@ -49,6 +54,9 @@ function Root() {
         }}
         onLoginPhoneStart={loginWithPhoneStart}
         onLoginPhoneConfirm={loginWithPhoneConfirm}
+        onLoginEmail={loginWithEmail}
+        onRegisterEmail={registerWithEmail}
+        onResetPassword={resetPassword}
       />
     );
   }
@@ -61,6 +69,8 @@ function Root() {
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Root />
+    <ToastProvider>
+      <Root />
+    </ToastProvider>
   </React.StrictMode>
 );

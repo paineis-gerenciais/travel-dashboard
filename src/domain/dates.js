@@ -255,3 +255,32 @@ export function validateCityCoverage(state) {
   }
   return { overlaps, gaps };
 }
+
+
+/**
+ * Índice do dia mais próximo de uma data de referência (T-1.15).
+ * - Se a referência está DENTRO da viagem, devolve o índice daquele dia.
+ * - Se a viagem ainda não começou, devolve 0 (primeiro dia).
+ * - Se a viagem já terminou, devolve o último índice.
+ * Lógica de data isolada aqui de propósito: é a categoria que já causou bug
+ * neste projeto (o café da manhã), então merece teste próprio.
+ */
+export function nearestDayIndex(dates, refISO) {
+  if (!dates || dates.length === 0) return 0;
+  const ref = String(refISO || '');
+  const exact = dates.findIndex((d) => d.date === ref);
+  if (exact >= 0) return exact;
+  if (ref < dates[0].date) return 0;
+  if (ref > dates[dates.length - 1].date) return dates.length - 1;
+  // dentro do intervalo, mas sem correspondência exata (buraco de cobertura):
+  // fica no primeiro dia posterior à referência
+  const after = dates.findIndex((d) => d.date > ref);
+  return after >= 0 ? after : dates.length - 1;
+}
+
+/** Data de hoje em ISO (yyyy-mm-dd), no fuso local. */
+export function todayISO() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}

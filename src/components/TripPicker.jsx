@@ -4,6 +4,8 @@ import { blankState, SUBTITLES } from '../domain/state.js';
 import { randomQuote } from '../lib/quotes.js';
 import { Row, Sheet, EmptyState } from './ui.jsx';
 import SettingsSheet from './SettingsSheet.jsx';
+import Onboarding, { onboardingPending } from './Onboarding.jsx';
+import { track } from '../lib/analytics.js';
 
 function templateState() {
   const base = new Date();
@@ -32,6 +34,8 @@ export default function TripPicker({ onLogout, theme, toggleTheme, refreshUser }
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  // T-1.3: onboarding só no primeiro uso (e só para quem ainda não tem viagem)
+  const [showOnboarding, setShowOnboarding] = useState(() => onboardingPending());
   // sorteia uma vez por visita à tela, não a cada re-render
   const [quote] = useState(randomQuote);
 
@@ -120,6 +124,7 @@ export default function TripPicker({ onLogout, theme, toggleTheme, refreshUser }
         </div>
       </div>
 
+      {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       {showSettings && <SettingsSheet user={user} onClose={closeSettings} />}
 
       {confirmDel && (

@@ -1,6 +1,6 @@
 // components/ui.jsx — kit de componentes canônicos do redesign (Fase R1).
 // Um vocabulário pequeno, usado em todo lugar, no lugar de estilos ad-hoc.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react';
 import { STATUS_OPTIONS, CHECKLIST_STATUS_OPTIONS, PRIORITY_OPTIONS } from '../domain/state.js';
 
 /* ---------- Chip de status ---------- */
@@ -35,10 +35,10 @@ export const CHECKLIST_STATUS = CHECKLIST_STATUS_OPTIONS;
 export const PRIORITIES = PRIORITY_OPTIONS;
 
 /* ---------- Row: a unidade de lista (substitui a <tr>) ---------- */
-export function Row({ icon, title, sub, value, cancelled, children, onClick }) {
+export function Row({ icon, title, sub, value, cancelled, children, onClick, highlight }) {
   const Tag = onClick ? 'button' : 'div';
   return (
-    <div className={'row' + (cancelled ? ' row-cancelled' : '')}>
+    <div className={'row' + (cancelled ? ' row-cancelled' : '') + (highlight ? ' row-highlight' : '')}>
       {icon && <span className="row-icon" aria-hidden="true">{icon}</span>}
       <div className="row-main">
         {onClick ? (
@@ -58,10 +58,40 @@ export function Row({ icon, title, sub, value, cancelled, children, onClick }) {
 
 /* ---------- Sheet: bottom sheet no mobile, modal no desktop ---------- */
 export function Sheet({ title, onClose, children }) {
+  const panelRef = useRef(null);
+
+  // T-1.8 (acessibilidade): Esc fecha E o foco fica preso dentro do sheet
+  // enquanto ele estiver aberto. Sem o trap, quem navega por teclado ou leitor
+  // de tela "sai" do diálogo para o conteúdo de trás, que está inerte na tela
+  // mas ainda focável — um dos erros de acessibilidade mais comuns em modais.
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const anterior = document.activeElement;
+    const el = panelRef.current;
+    const focaveis = () =>
+      Array.from(
+        el?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') || []
+      ).filter((n) => !n.disabled && n.offsetParent !== null);
+
+    // foco inicial no primeiro elemento útil do sheet
+    const primeiros = focaveis();
+    (primeiros[0] || el)?.focus?.();
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const lista = focaveis();
+      if (lista.length === 0) return;
+      const primeiro = lista[0];
+      const ultimo = lista[lista.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+    };
+
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      anterior?.focus?.(); // devolve o foco a quem abriu o sheet
+    };
   }, [onClose]);
 
   // Correção do "botão excluir escondido no iPhone": com o teclado aberto, o
@@ -85,6 +115,8 @@ export function Sheet({ title, onClose, children }) {
     <div className="sheet-backdrop" onClick={onClose}>
       <div
         className="sheet"
+        ref={panelRef}
+        tabIndex={-1}
         style={maxH ? { maxHeight: maxH } : undefined}
         role="dialog" aria-modal="true" aria-label={title}
         onClick={(e) => e.stopPropagation()}
@@ -155,3 +187,45 @@ export function Field({ label, children }) {
 
 /* utilidade herdada: classe de linha cancelada */
 export const isCancelled = (x) => String(x?.status || '').toLowerCase() === 'cancelado';
+
+
+/* ---------- Toast: confirmação de ações (T-1.9) ---------- */
+const ToastCtx = createContext(() => {});
+export const useToast = () => useContext(ToastCtx);
+
+export function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+
+  const notify = useCallback((message, kind = 'ok') => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((t) => [...t, { id, message, kind }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
+  }, []);
+
+  return (
+    <ToastCtx.Provider value={notify}>
+      {children}
+      <div className="toast-wrap" role="status" aria-live="polite">
+        {toasts.map((t) => (
+          <div key={t.id} className={'toast toast-' + t.kind}>{t.message}</div>
+        ))}
+      </div>
+    </ToastCtx.Provider>
+  );
+}
+
+/* ---------- Campo de busca reutilizável (T-1.10) ---------- */
+export function SearchField({ value, onChange, placeholder = 'Buscar…', label }) {
+  return (
+    <label className="field">
+      {label && <span>{label}</span>}
+      <input
+        type="search"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label || placeholder}
+      />
+    </label>
+  );
+}

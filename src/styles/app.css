@@ -320,12 +320,34 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
   .grid-2{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 
-/* ---------- Impressão ---------- */
+/* ---------- Impressão (T-1.5) ---------- */
+.print-only{display:none}
+
 @media print{
-  @page{size:A4 portrait;margin:12mm}
-  .tabbar,.appbar,.no-print,.btn-add,.sheet-backdrop{display:none!important}
-  body{background:#fff;color:#000;padding:0}
-  .card,.row{border-color:#ccc;box-shadow:none}
+  @page{size:A4 portrait;margin:14mm}
+
+  /* esconde o app inteiro e mostra só o documento de impressão */
+  .appbar,.tabbar,.no-print,.btn-add,.sheet-backdrop,.toast-wrap,.app-shell > main{display:none!important}
+  .print-only{display:block}
+
+  html,body{background:#fff;color:#000}
+  .app-shell{display:block;height:auto;overflow:visible}
+
+  .print-doc{font-size:11pt;line-height:1.45;color:#000}
+  .print-cover{border-bottom:2px solid #000;padding-bottom:8mm;margin-bottom:8mm}
+  .print-cover h1{font-size:22pt;margin:0 0 2mm}
+  .print-cover p{margin:0;color:#333}
+
+  .print-block{margin-bottom:6mm;break-inside:avoid}
+  .print-block h2{
+    font-size:12pt;margin:0 0 2mm;padding-bottom:1mm;
+    border-bottom:1px solid #999;display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .print-day-total{font-weight:400;font-size:10pt;color:#333}
+  .print-line{margin:0 0 1.5mm;font-size:10.5pt}
+  .print-muted{color:#666}
+  .print-total{border-top:1px solid #999;padding-top:1.5mm;margin-top:2mm}
+  .print-day{break-inside:avoid}
 }
 
 /* ============================================================
@@ -403,3 +425,26 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
   background:var(--surface);
   border-top:1px solid var(--line);
 }
+
+/* ---------- Toast (T-1.9) ---------- */
+.toast-wrap{
+  position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));
+  z-index:70;display:grid;gap:var(--sp-2);justify-items:center;pointer-events:none;padding:0 var(--sp-4);
+}
+.toast{
+  background:var(--text);color:var(--surface);
+  padding:var(--sp-3) var(--sp-4);border-radius:var(--r-pill);
+  font-size:var(--fs-2);font-weight:var(--w-bold);box-shadow:var(--shadow);
+  max-width:100%;animation:toast-in 160ms ease;
+}
+.toast-error{background:var(--danger);color:#fff}
+@keyframes toast-in{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+@media (min-width:768px){ .toast-wrap{bottom:24px} }
+
+/* ---------- Destaque temporário ao vir de "ir para o item" (T-1.16) ---------- */
+.row-highlight{
+  background:var(--accent-soft);
+  box-shadow:inset 3px 0 0 var(--accent);
+  animation:row-pulse 1.2s ease 2;
+}
+@keyframes row-pulse{0%,100%{background:var(--accent-soft)}50%{background:transparent}}

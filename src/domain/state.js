@@ -47,6 +47,9 @@ export function blankState() {
       subtitle: SUBTITLES[0],
       currentVersionId: null,
       costView: 'categoria',
+      // T-1.7: nomes dos participantes da divisão de despesas. Vazio = usa
+      // rótulos genéricos derivados de `travelers`.
+      participants: [],
     },
   };
 }

@@ -1,0 +1,76 @@
+# .github/workflows/qualidade.yml — T-1.12
+#
+# ATENÇÃO: este workflow NÃO faz deploy. Ele só roda testes e build.
+# O deploy continua sendo feito pelos workflows que já existem no repositório
+# (firebase-hosting-merge.yml e firebase-hosting-pull-request.yml). Este arquivo
+# foi deliberadamente separado para não repetir o problema antigo de um
+# `deploy.yml` reaparecendo pelo zip e causando deploy em duplicidade.
+
+name: Qualidade
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  qualidade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Java é exigido pelo emulador do Firestore (testes de regras e E2E)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Testes de domínio
+        run: npm test
+
+      - name: Build (produção)
+        run: npm run build
+
+      # Código guardado por variável de ambiente só é compilado quando a
+      # variável existe. Sem este passo, um erro dentro do bloco de emuladores
+      # passaria despercebido no build normal e só apareceria no E2E.
+      - name: Build (modo teste, com emuladores)
+        run: npm run build
+        env:
+          VITE_USE_EMULATORS: 'true'
+
+      - name: Conferir que o código de teste não vaza para produção
+        run: |
+          npm run build
+          if grep -rl "__E2E_LOGIN__\|connectAuthEmulator" dist/assets/*.js; then
+            echo "ERRO: código de emulador presente no bundle de produção"; exit 1
+          fi
+          echo "OK: bundle de produção limpo"
+
+      - name: Testes de regras (emulador)
+        run: npm run test:rules
+
+      - name: Instalar navegadores do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes E2E (emulador)
+        run: npm run test:e2e
+
+      - name: Guardar relatório do Playwright em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

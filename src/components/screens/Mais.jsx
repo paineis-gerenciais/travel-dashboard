@@ -6,8 +6,14 @@ import { totals, checklistStats } from '../../domain/costs.js';
 import { allPlanningDates, uniqueCities, mainCities } from '../../domain/dates.js';
 import { normalizeState } from '../../domain/state.js';
 import { logError } from '../../lib/logger.js';
-import { Row, Sheet, Metric, EmptyState, StatusChip, CHECKLIST_STATUS } from '../ui.jsx';
+import { Row, Sheet, Metric, EmptyState, StatusChip, CHECKLIST_STATUS, SearchField, useToast } from '../ui.jsx';
 import { appUrl, whatsappUrl, nativeShare, copyToClipboard } from '../../lib/invite.js';
+import { track } from '../../lib/analytics.js';
+import { sendFeedback } from '../../lib/tripData.js';
+import {
+  remindersEnabled, setRemindersEnabled, notificationsSupported,
+  notificationPermission, requestNotificationPermission,
+} from '../../lib/reminders.js';
 import VersionsModal from '../VersionsModal.jsx';
 import ShareModal from '../ShareModal.jsx';
 import DiagnosticsModal from '../DiagnosticsModal.jsx';
@@ -96,19 +102,25 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
         </div>
 
         <div className="card card-flush">
+          <Row icon="🔔" title="Lembretes" sub={<RemindersSub />}
+            value={<RemindersToggle />} />
           <Row icon="🎨" title="Tema" sub={theme === 'dark' ? 'Escuro' : 'Claro'}
             value={<button className="btn-ghost btn-sm" onClick={toggleTheme}>Alternar</button>} />
-          <Row icon="🖨️" title="Imprimir" sub="Gerar uma versão para papel ou PDF"
-            value={<button className="btn-ghost btn-sm" onClick={() => window.print()}>Imprimir</button>} />
+          <Row icon="📄" title="Exportar PDF do roteiro" sub="Versão organizada para mandar no grupo ou imprimir"
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('pdf')}>Gerar →</button>} />
           <Row icon="⬇️" title="Exportar JSON" sub="Baixar os dados desta viagem"
             value={<button className="btn-ghost btn-sm" onClick={exportJSON}>Exportar</button>} />
           <Row icon="⬆️" title="Importar JSON" sub="Substituir o conteúdo por um arquivo"
             value={<button className="btn-ghost btn-sm" onClick={() => fileRef.current.click()}>Importar</button>} />
           <Row icon="🩺" title="Diagnóstico" sub="Erros registrados nesta sessão"
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('diag')}>Abrir →</button>} />
+          <Row icon="💡" title="Enviar feedback" sub="Reportar um problema ou sugerir algo"
+            value={<button className="btn-ghost btn-sm" onClick={() => { setSheet('feedback'); track('feedback_opened'); }}>Abrir →</button>} />
         </div>
 
         <div className="card card-flush">
+          <Row icon="📋" title="Duplicar esta viagem" sub="Criar uma cópia para reaproveitar o roteiro"
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('duplicate')}>Duplicar →</button>} />
           <Row icon="🧳" title="Minhas viagens" sub="Trocar de viagem"
             value={<button className="btn-ghost btn-sm" onClick={() => tripsActions.closeTrip()}>Trocar</button>} />
           <Row icon="🚪" title="Sair" sub={user?.email}
@@ -140,6 +152,9 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
         </Sheet>
       )}
       {sheet === 'applink' && <AppLinkSheet onClose={() => setSheet(null)} />}
+      {sheet === 'feedback' && <FeedbackSheet user={user} onClose={() => setSheet(null)} />}
+      {sheet === 'duplicate' && <DuplicateSheet onClose={() => setSheet(null)} />}
+      {sheet === 'pdf' && <PdfSheet onClose={() => setSheet(null)} />}
       {sheet === 'clear' && (
         <Sheet title="Limpar viagem" onClose={() => setSheet(null)}>
           <p>
@@ -161,7 +176,16 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
 function ChecklistSheet({ onClose }) {
   const { state, actions } = useTrip();
   const [item, setItem] = useState('');
+  const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todos');
   const cs = checklistStats(state);
+
+  // T-1.10: busca por texto + filtro por status, tudo no cliente.
+  const norm = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const visiveis = state.checklist
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => (q ? norm(c.item).includes(norm(q)) : true))
+    .filter(({ c }) => (statusFilter === 'todos' ? true : c.status === statusFilter));
 
   const add = () => {
     if (!item.trim()) return;
@@ -177,6 +201,16 @@ function ChecklistSheet({ onClose }) {
           <button className="btn-primary" onClick={add}>Add</button>
         </div>
 
+        {state.checklist.length > 3 && (
+          <div className="stack-2">
+            <SearchField value={q} onChange={(v) => { setQ(v); if (v) track('list_filtered', { area: 'checklist' }); }} placeholder="Buscar item…" />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filtrar por status">
+              <option value="todos">Todos os status</option>
+              {CHECKLIST_STATUS.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+        )}
+
         {state.checklist.length === 0 ? (
           <EmptyState
             title="Checklist vazio"
@@ -186,7 +220,10 @@ function ChecklistSheet({ onClose }) {
           </EmptyState>
         ) : (
           <div className="card card-flush">
-            {state.checklist.map((c, i) => (
+            {visiveis.length === 0 && (
+              <p className="small t2" style={{ padding: 'var(--sp-4)', margin: 0 }}>Nenhum item encontrado.</p>
+            )}
+            {visiveis.map(({ c, i }) => (
               <div className="row" key={c.id}>
                 <input
                   type="checkbox"
@@ -240,5 +277,177 @@ function AppLinkSheet({ onClose }) {
         <p className="small t3" style={{ margin: 0, wordBreak: 'break-all' }}>{appUrl()}</p>
       </div>
     </Sheet>
+  );
+}
+
+function FeedbackSheet({ user, onClose }) {
+  const notify = useToast();
+  const [category, setCategory] = useState('ideia');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const send = async () => {
+    const t = text.trim();
+    if (!t) { setError('Escreva sua mensagem antes de enviar.'); return; }
+    setBusy(true); setError('');
+    try {
+      await sendFeedback(user, category, t);
+      track('feedback_sent', { category });
+      notify('Obrigado! Seu feedback foi enviado.');
+      onClose();
+    } catch (e) {
+      setError('Não foi possível enviar agora: ' + e.message);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Sheet title="Enviar feedback" onClose={onClose}>
+      <div className="stack">
+        <p className="small t2" style={{ margin: 0 }}>
+          Sua opinião guia o que construímos a seguir. Conte o que atrapalhou ou o que faria
+          diferença para você.
+        </p>
+        <label className="field">
+          <span>Tipo</span>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="ideia">Sugestão / ideia</option>
+            <option value="bug">Problema / erro</option>
+            <option value="outro">Outro</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Mensagem</span>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva aqui…" />
+        </label>
+        {error && <p className="small" style={{ color: 'var(--danger)', margin: 0 }} role="alert">{error}</p>}
+        <div className="sheet-footer stack-2">
+          <button className="btn-primary btn-block" onClick={send} disabled={busy}>
+            {busy ? 'Enviando…' : 'Enviar'}
+          </button>
+          <button className="btn-ghost btn-block" onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+/* ---------- T-1.6: duplicar viagem ---------- */
+function DuplicateSheet({ onClose }) {
+  const { state } = useTrip();
+  const { trips, activeTripId, actions: tripsActions } = useTrips();
+  const notify = useToast();
+  const atual = trips.find((t) => t.id === activeTripId);
+  const [name, setName] = useState(`Cópia de ${atual?.name || 'viagem'}`);
+  const [shift, setShift] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  const duplicate = async () => {
+    setBusy(true);
+    try {
+      await tripsActions.duplicateTrip(state, name.trim() || 'Cópia', Number(shift) || 0);
+      notify('Viagem duplicada.');
+      onClose();
+    } catch (e) {
+      notify('Não foi possível duplicar: ' + e.message, 'error');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Sheet title="Duplicar viagem" onClose={onClose}>
+      <div className="stack">
+        <p className="small t2" style={{ margin: 0 }}>
+          Cria uma cópia com as cidades, itens e checklist. <b>Não</b> copia membros, versões salvas
+          nem comentários — a cópia começa só sua.
+        </p>
+        <label className="field">
+          <span>Nome da cópia</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Deslocar as datas (dias)</span>
+          <input type="number" inputMode="numeric" value={shift} onChange={(e) => setShift(e.target.value)} />
+          <span className="tiny t3">0 mantém as datas originais. Ex.: 365 joga a viagem para o ano que vem.</span>
+        </label>
+        <div className="sheet-footer stack-2">
+          <button className="btn-primary btn-block" onClick={duplicate} disabled={busy}>
+            {busy ? 'Duplicando…' : 'Duplicar'}
+          </button>
+          <button className="btn-ghost btn-block" onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+/* ---------- T-1.5: PDF do roteiro ---------- */
+function PdfSheet({ onClose }) {
+  const notify = useToast();
+  const gerar = () => {
+    track('pdf_exported');
+    onClose();
+    // deixa o sheet fechar antes de abrir o diálogo de impressão
+    setTimeout(() => window.print(), 120);
+  };
+  return (
+    <Sheet title="Exportar PDF do roteiro" onClose={onClose}>
+      <div className="stack">
+        <p className="small t2" style={{ margin: 0 }}>
+          Gera uma versão organizada da viagem — capa, um bloco por dia com os itens em ordem de
+          horário, e o resumo de custos.
+        </p>
+        <p className="small t2" style={{ margin: 0 }}>
+          Na janela que abrir, escolha <b>“Salvar como PDF”</b> como destino para gerar o arquivo,
+          ou uma impressora para imprimir direto.
+        </p>
+        <div className="sheet-footer stack-2">
+          <button className="btn-primary btn-block" onClick={gerar}>Gerar PDF</button>
+          <button className="btn-ghost btn-block" onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+/* ---------- T-1.11: lembretes locais ---------- */
+function RemindersSub() {
+  if (!notificationsSupported()) return 'Não disponível neste navegador';
+  const p = notificationPermission();
+  if (p === 'denied') return 'Bloqueado nas permissões do navegador';
+  return remindersEnabled() ? 'Ativados: check-in e pendências do dia seguinte' : 'Avisos de check-in e pendências';
+}
+
+function RemindersToggle() {
+  const notify = useToast();
+  const [on, setOn] = useState(remindersEnabled());
+  const [busy, setBusy] = useState(false);
+
+  if (!notificationsSupported()) return <span className="tiny t3">—</span>;
+
+  const alternar = async () => {
+    if (on) {
+      setRemindersEnabled(false);
+      setOn(false);
+      track('reminder_scheduled', { result: 'off' });
+      return;
+    }
+    setBusy(true);
+    // pede permissão só AGORA, quando a pessoa demonstrou interesse
+    const perm = await requestNotificationPermission();
+    track('reminder_permission', { result: perm });
+    if (perm === 'granted') {
+      setRemindersEnabled(true);
+      setOn(true);
+      notify('Lembretes ativados.');
+    } else {
+      notify('Permissão de notificação negada.', 'error');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <button className="btn-ghost btn-sm" onClick={alternar} disabled={busy}>
+      {on ? 'Desativar' : 'Ativar'}
+    </button>
   );
 }
