@@ -115,7 +115,7 @@ function CitySheet({ index, onClose, onDelete }) {
   if (!c) return null;
 
   return (
-    <Sheet title="Cidade" onClose={onClose}>
+    <Sheet title="Editar cidade" onClose={onClose}>
       <div className="stack">
         <div className="grid-2">
           <Field label="Cidade">

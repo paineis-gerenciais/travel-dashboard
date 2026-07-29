@@ -1,16 +1,18 @@
-import { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { fmtDate, money, num } from '../../domain/format.js';
-import { allPlanningDates, cityForDate, tripDayFlow, validateCityCoverage, cityColorClass, itemTimeMinutes, HOME } from '../../domain/dates.js';
+import { allPlanningDates, cityForDate, tripDayFlow, validateCityCoverage, cityColorClass, itemTimeMinutes, nearestDayIndex, todayISO, HOME } from '../../domain/dates.js';
 import {
   getTransportDate, getTransportOrigin, getTransportDest, getTransportMode,
   getTransportDurationMinutes, minutesToLabel,
 } from '../../domain/transport.js';
 import { activeCost } from '../../domain/costs.js';
+import { participants } from '../../domain/split.js';
 import { Row, StatusChip, Sheet, EmptyState, Banner, Stepper, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 import DurationInput from '../DurationInput.jsx';
 import CommentThread from '../CommentThread.jsx';
+import { track } from '../../lib/analytics.js';
 import Timeline from '../Timeline.jsx';
 
 /**
@@ -32,17 +34,37 @@ function dayItems(state, date) {
 const dayTotal = ({ transports, foods, attractions, others }) =>
   [...transports, ...foods, ...attractions, ...others].reduce((s, x) => s + activeCost(x), 0);
 
-export default function Dias({ tripId, onNavigate }) {
+export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
   const { state, actions } = useTrip();
   const dates = allPlanningDates(state);
-  const [idx, setIdx] = useState(0);
+  // T-1.15: abre no dia mais próximo de hoje (não no dia 1)
+  const [idx, setIdx] = useState(() => nearestDayIndex(allPlanningDates(state), todayISO()));
   const [editing, setEditing] = useState(null); // {kind, index}
+  const [highlightId, setHighlightId] = useState(null); // T-1.16: item destacado ao vir de Mensagens
   const coverage = useMemo(() => validateCityCoverage(state), [state]);
   const cardRef = useRef(null);
   const direction = useRef(1);
   const gesture = useRef({ startX: 0, dx: 0, dragging: false, width: 0 });
 
   const i = Math.min(idx, Math.max(0, dates.length - 1));
+
+  // T-1.16: veio de "ir para o item" — salta para o dia daquele item e o
+  // destaca por alguns segundos, para a pessoa achá-lo na lista.
+  useEffect(() => {
+    if (!target) return;
+    const all = allPlanningDates(state);
+    const i2 = all.findIndex((d) => d.date === target.date);
+    if (i2 >= 0) {
+      direction.current = i2 >= idx ? 1 : -1;
+      setIdx(i2);
+    }
+    const id = String(target.itemKey || '').split(':')[1];
+    setHighlightId(id || null);
+    onTargetHandled?.();
+    const t = setTimeout(() => setHighlightId(null), 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
 
   // Transição fluida: o cartão entra deslizando do lado correspondente,
   // tanto no swipe quanto na navegação por botão.
@@ -141,6 +163,19 @@ export default function Dias({ tripId, onNavigate }) {
   };
 
   const city = cityForDate(state, date);
+
+  // T-1.14: criar o item E abrir o editor dele direto. As ações do store fazem
+  // push no fim do array, então o índice do novo item é o tamanho atual — lido
+  // ANTES da mutação para não depender da ordem de atualização do estado.
+  const addAndEdit = (kind) => {
+    const index = state[kind].length;
+    if (kind === 'transports') actions.addTransport(date);
+    else if (kind === 'foodItems') actions.addFoodItem(date, city);
+    else if (kind === 'attractions') actions.addAttraction(date, city);
+    else actions.addOther(date, city);
+    setEditing({ kind, index });
+    track('day_item_added', { kind });
+  };
   const cityClass = cityColorClass(flow.to && flow.to !== HOME ? flow.to : city);
 
   return (
@@ -200,6 +235,7 @@ export default function Dias({ tripId, onNavigate }) {
                 return (
                   <Row
                     key={x.id}
+                    highlight={highlightId === x.id}
                     icon="🚆"
                     cancelled={isCancelled(x)}
                     title={`${getTransportMode(x) || 'Transporte'}${x.time ? ` · ${x.time}` : ''}${dur ? ` · ${minutesToLabel(dur)}` : ''}`}
@@ -216,6 +252,7 @@ export default function Dias({ tripId, onNavigate }) {
                 return (
                   <Row
                     key={x.id}
+                    highlight={highlightId === x.id}
                     icon={x.autoBreakfast ? '☕' : '🍽️'}
                     cancelled={isCancelled(x)}
                     title={x.type || 'Refeição'}
@@ -234,6 +271,7 @@ export default function Dias({ tripId, onNavigate }) {
                 return (
                   <Row
                     key={x.id}
+                    highlight={highlightId === x.id}
                     icon="🎟️"
                     cancelled={isCancelled(x)}
                     title={x.name || 'Atração'}
@@ -249,6 +287,7 @@ export default function Dias({ tripId, onNavigate }) {
               return (
                 <Row
                   key={x.id}
+                  highlight={highlightId === x.id}
                   icon="💼"
                   cancelled={isCancelled(x)}
                   title={x.name || 'Outra despesa'}
@@ -263,10 +302,10 @@ export default function Dias({ tripId, onNavigate }) {
           </div>
 
           <div className="stack-2">
-            <button className="btn-add" onClick={() => actions.addTransport(date)}>+ Transporte</button>
-            <button className="btn-add" onClick={() => actions.addFoodItem(date, city)}>+ Refeição</button>
-            <button className="btn-add" onClick={() => actions.addAttraction(date, city)}>+ Atração</button>
-            <button className="btn-add" onClick={() => actions.addOther(date, city)}>+ Outra despesa</button>
+            <button className="btn-add" onClick={() => addAndEdit('transports')}>+ Transporte</button>
+            <button className="btn-add" onClick={() => addAndEdit('foodItems')}>+ Refeição</button>
+            <button className="btn-add" onClick={() => addAndEdit('attractions')}>+ Atração</button>
+            <button className="btn-add" onClick={() => addAndEdit('otherExpenses')}>+ Outra despesa</button>
           </div>
 
           <Stepper
@@ -302,11 +341,13 @@ function ItemSheet({ kind, index, onClose }) {
   const set = (key, value) => actions.updateItem(kind, index, key, value);
   const remove = () => { actions.deleteItem(kind, index); onClose(); };
 
+  // Títulos com verbo: além de mais claros, evitam que o nome acessível do
+  // diálogo colida com o do campo homônimo dentro dele.
   const titles = {
-    transports: 'Transporte',
-    foodItems: 'Refeição',
-    attractions: 'Atração',
-    otherExpenses: 'Outra despesa',
+    transports: 'Editar transporte',
+    foodItems: 'Editar refeição',
+    attractions: 'Editar atração',
+    otherExpenses: 'Editar despesa',
   };
 
   return (
@@ -378,6 +419,14 @@ function ItemSheet({ kind, index, onClose }) {
 
         <Field label="Custo">
           <MoneyInput value={num(item.cost)} onChange={(v) => set('cost', v)} className="input-money" />
+        </Field>
+
+        {/* T-1.7: quem pagou — alimenta a divisão de despesas em Custos */}
+        <Field label="Quem pagou">
+          <select value={item.paidBy || ''} onChange={(e) => set('paidBy', e.target.value)}>
+            <option value="">Ainda não definido</option>
+            {participants(state).map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
         </Field>
 
         <div className="field">

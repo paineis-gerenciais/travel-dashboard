@@ -1,9 +1,18 @@
 // store/useAuth.js — autenticação (Google e celular) + gravação do perfil no login.
 import { useState, useEffect } from 'react';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
+} from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase.js';
 import { upsertUserProfile } from '../lib/tripData.js';
 import { sendLoginCode, confirmCode } from '../lib/phoneAuth.js';
+import { track } from '../lib/analytics.js';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -14,6 +23,7 @@ export function useAuth() {
       if (u) {
         // grava/atualiza o perfil (necessário para convites e exibição de nomes)
         try { await upsertUserProfile(u); } catch (e) { console.error('Falha ao gravar perfil', e); }
+        track('login_succeeded', { method: u.phoneNumber && !u.email ? 'phone' : 'google' });
       }
       setUser(u);
       setLoading(false);
@@ -22,6 +32,21 @@ export function useAuth() {
 
   const login = () => signInWithPopup(auth, googleProvider);
   const logout = () => signOut(auth);
+
+  // E-mail e senha. Diferente do login por celular, este provedor NÃO exige o
+  // plano Blaze — é a forma mais acessível de entrar no app.
+  const loginWithEmail = (email, senha) => signInWithEmailAndPassword(auth, email.trim(), senha);
+
+  const registerWithEmail = async (email, senha, nome) => {
+    const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha);
+    if (nome && nome.trim()) {
+      await updateProfile(cred.user, { displayName: nome.trim() });
+      await upsertUserProfile(auth.currentUser); // grava o nome já no primeiro acesso
+    }
+    return cred;
+  };
+
+  const resetPassword = (email) => sendPasswordResetEmail(auth, email.trim());
 
   // Login por celular: 1) enviar código, 2) confirmar. `containerId` é a div
   // invisível do reCAPTCHA que precisa existir no DOM (ver Login.jsx).
@@ -34,5 +59,9 @@ export function useAuth() {
   // referência), para a UI (nome/celular/e-mail em Configurações) atualizar.
   const refreshUser = () => setUser((u) => (auth.currentUser ? { ...auth.currentUser } : u));
 
-  return { user, loading, login, logout, loginWithPhoneStart, loginWithPhoneConfirm, refreshUser };
+  return {
+    user, loading, login, logout,
+    loginWithEmail, registerWithEmail, resetPassword,
+    loginWithPhoneStart, loginWithPhoneConfirm, refreshUser,
+  };
 }

@@ -13,6 +13,7 @@ import { ensureGenerated, deleteCityCascade } from '../domain/generate.js';
 import { autoTitle, periodByTime } from '../domain/dates.js';
 import { num } from '../domain/format.js';
 import { subscribeTrip, saveTripState, heartbeatPresence, subscribePresence, clearPresence, logActivity } from '../lib/tripData.js';
+import { track } from '../lib/analytics.js';
 
 const TripContext = createContext(null);
 export const useTrip = () => useContext(TripContext);
@@ -141,6 +142,7 @@ export function TripProvider({ tripId, user, children }) {
     addCity() {
       mutate((s) => s.cities.push({ id: uid(), city: '', emoji: '📍', start: '', end: '', hotel: '', nightly: 0, status: 'Planejado', notes: '', breakfastIncluded: false }));
       logActivity(tripId, user, 'adicionou uma cidade');
+      track('city_added');
     },
     setCityField(index, key, value) {
       mutate((s) => { const c = s.cities[index]; if (!c) return; c[key] = key === 'nightly' ? num(value) : value; });
@@ -183,6 +185,10 @@ export function TripProvider({ tripId, user, children }) {
     setOtherDate(index, date, city) { mutate((s) => { const o = s.otherExpenses[index]; if (!o) return; o.date = date; o.city = city; }); },
     addChecklist(item = '') {
       mutate((s) => s.checklist.push({ id: uid(), category: 'Outros', item, responsible: '', priority: 'Média', status: 'Pendente', notes: '', done: false }));
+    },
+    /** T-1.7: nomes dos participantes da divisão de despesas. */
+    setParticipants(list) {
+      mutate((s) => { s.settings.participants = list.map((x) => String(x).trim()).filter(Boolean); });
     },
     toggleChecklist(index, checked) {
       const label = state.checklist[index]?.item || 'um item';

@@ -15,6 +15,9 @@ import {
 import { db } from './firebase.js';
 import { normalizeState, blankState } from '../domain/state.js';
 
+/** Versão do app, anexada ao feedback para contextualizar relatos. */
+export const APP_VERSION = '1.0.0';
+
 const lower = (s) => String(s || '').trim().toLowerCase();
 const inviteId = (tripId, email) => `${tripId}_${lower(email)}`;
 
@@ -275,4 +278,35 @@ export function subscribePresence(tripId, cb) {
 
 export async function clearPresence(tripId, uid) {
   try { await deleteDoc(doc(db, 'trips', tripId, 'presence', uid)); } catch (e) { /* ignore */ }
+}
+
+/* ---------- Feedback in-app (T-1.2) ---------- */
+// Coleção `feedback/`: qualquer usuário autenticado CRIA o próprio feedback,
+// mas ninguém LÊ pelo cliente (leitura só pelo console/admin). Ver
+// firestore.rules e os testes de isolamento correspondentes.
+export async function sendFeedback(user, category, text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return;
+  await setDoc(doc(collection(db, 'feedback')), {
+    category: String(category || 'outro'),
+    text: trimmed.slice(0, 4000),
+    authorUid: user.uid,
+    authorEmail: user.email || null,
+    appVersion: APP_VERSION,
+    userAgent: String(navigator.userAgent || '').slice(0, 200),
+    createdAtMs: Date.now(),
+    createdAt: serverTimestamp(),
+  });
+}
+
+/** Todos os comentários da viagem, do mais recente ao mais antigo (T-1.16). */
+export function subscribeAllComments(tripId, cb, max = 200) {
+  return onSnapshot(collection(db, 'trips', tripId, 'comments'), (snap) => {
+    cb(
+      snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0))
+        .slice(0, max)
+    );
+  });
 }

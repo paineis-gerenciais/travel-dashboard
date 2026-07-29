@@ -6,11 +6,18 @@
 // (firestore.rules), não o segredo dessas chaves.
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  connectAuthEmulator,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from 'firebase/auth';
 import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  connectFirestoreEmulator,
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -32,3 +39,29 @@ export const googleProvider = new GoogleAuthProvider();
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
+
+// ---------------------------------------------------------------------------
+// Modo de teste (T-1.12). SÓ é ativado quando VITE_USE_EMULATORS === 'true',
+// variável que existe apenas no ambiente de teste local/CI — jamais em
+// produção. Como a comparação é estática, o bundler elimina este bloco inteiro
+// no build normal (e, com ele, os imports que só são usados aqui).
+//
+// Importante: NADA de `await` no topo do módulo. Além de o alvo de build do
+// Vite não suportar top-level await, um import assíncrono aqui criaria uma
+// corrida — o app poderia começar a usar `auth`/`db` antes de a conexão com o
+// emulador ser estabelecida, deixando os testes E2E instáveis. Por isso os
+// imports são estáticos e a conexão é síncrona.
+if (import.meta.env.VITE_USE_EMULATORS === 'true') {
+  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, 'localhost', 8080);
+
+  // Gancho usado pelos testes E2E para entrar sem depender de conta Google.
+  window.__E2E_LOGIN__ = async (email) => {
+    const senha = 'senha-de-teste-123';
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch {
+      await createUserWithEmailAndPassword(auth, email, senha);
+    }
+  };
+}

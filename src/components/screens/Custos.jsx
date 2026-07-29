@@ -10,7 +10,9 @@ import {
   getTransportDate, getTransportOrigin, getTransportDest, getTransportMode,
   getTransportDurationMinutes, minutesToLabel,
 } from '../../domain/transport.js';
-import { Row, Metric, EmptyState, Sheet, isCancelled } from '../ui.jsx';
+import { Row, Metric, EmptyState, Sheet, isCancelled, useToast } from '../ui.jsx';
+import { splitSummary, settlements, participants } from '../../domain/split.js';
+import { track } from '../../lib/analytics.js';
 
 /**
  * CUSTOS — o modo orçamento. Totais, distribuição e os RELATÓRIOS por categoria
@@ -28,6 +30,7 @@ const REPORTS = [
 export default function Custos() {
   const { state, actions } = useTrip();
   const [report, setReport] = useState(null);
+  const [showSplit, setShowSplit] = useState(false);
   const t = totals(state);
   const dates = allPlanningDates(state);
   const view = state.settings.costView || 'categoria';
@@ -101,11 +104,11 @@ export default function Custos() {
           </p>
           <div className="stack-2">
             {rows.map((r, i) => (
-              <div key={r.label} className="stack-2" style={{ gap: 4 }}>
+              <div key={r.name} className="stack-2" style={{ gap: 4 }}>
                 <div className="row-between">
                   <span className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: palette(i), display: 'inline-block', flex: '0 0 auto' }} />
-                    {r.label}
+                    {r.name}
                   </span>
                   <span className="small num" style={{ fontWeight: 600 }}>
                     {money(r.value)} <span className="t3">· {t.total ? Math.round((r.value / t.total) * 100) : 0}%</span>
@@ -132,6 +135,15 @@ export default function Custos() {
         </div>
 
         <div className="card card-flush">
+          <Row
+            icon="🤝"
+            title="Divisão de despesas"
+            sub="Quanto cada um pagou e quem acerta com quem"
+            value={<button className="btn-ghost btn-sm" onClick={() => { setShowSplit(true); track('expense_split_viewed'); }}>Ver →</button>}
+          />
+        </div>
+
+        <div className="card card-flush">
           <div style={{ padding: 'var(--sp-4) var(--sp-4) 0' }}>
             <h3>Relatórios</h3>
             <p className="small t2">Consulte os itens por categoria. Para editar, use a tela Dias.</p>
@@ -143,6 +155,7 @@ export default function Custos() {
       </div>
 
       {report && <ReportSheet id={report} onClose={() => setReport(null)} />}
+      {showSplit && <SplitSheet onClose={() => setShowSplit(false)} />}
     </div>
   );
 }
@@ -216,6 +229,99 @@ function ReportSheet({ id, onClose }) {
   return (
     <Sheet title={label} onClose={onClose}>
       <div className="card card-flush">{body()}</div>
+    </Sheet>
+  );
+}
+
+/* ---------- T-1.7: divisão de despesas ---------- */
+function SplitSheet({ onClose }) {
+  const { state, actions } = useTrip();
+  const notify = useToast();
+  const t = totals(state);
+  const [editingPeople, setEditingPeople] = useState(false);
+  const [nomes, setNomes] = useState(participants(state).join(', '));
+
+  const resumo = splitSummary(state, t.lodging);
+  const acertos = settlements(resumo);
+
+  const salvarNomes = () => {
+    actions.setParticipants(nomes.split(',').map((x) => x.trim()).filter(Boolean));
+    setEditingPeople(false);
+    notify('Participantes atualizados.');
+    track('expense_split_enabled', { count: nomes.split(',').filter((x) => x.trim()).length });
+  };
+
+  return (
+    <Sheet title="Divisão de despesas" onClose={onClose}>
+      <div className="stack">
+        <p className="small t2" style={{ margin: 0 }}>
+          Divisão igual entre os participantes. Marque <b>quem pagou</b> em cada item (na tela Dias)
+          para o acerto ficar completo.
+        </p>
+
+        <div className="card" style={{ background: 'var(--surface-2)', border: 0 }}>
+          {editingPeople ? (
+            <div className="stack-2">
+              <label className="field">
+                <span>Participantes (separados por vírgula)</span>
+                <input value={nomes} onChange={(e) => setNomes(e.target.value)} placeholder="Ana, Bruno, Carla" />
+              </label>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                <button className="btn-primary btn-sm" onClick={salvarNomes}>Salvar</button>
+                <button className="btn-ghost btn-sm" onClick={() => setEditingPeople(false)}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <div className="row-between">
+              <span className="small">{resumo.people.join(' · ')}</span>
+              <button className="btn-ghost btn-sm" onClick={() => setEditingPeople(true)}>Editar</button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid-2">
+          <Metric label="Total da viagem" value={money(resumo.total)} />
+          <Metric label="Cota por pessoa" value={money(resumo.share)} />
+        </div>
+
+        <div className="card card-flush">
+          {resumo.rows.map((r) => (
+            <Row
+              key={r.person}
+              icon="👤"
+              title={r.person}
+              sub={`Pagou ${money(r.paid)} · cota ${money(r.share)}`}
+              value={
+                <span className="num" style={{ color: r.balance >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
+                  {r.balance >= 0 ? '+' : ''}{money(r.balance)}
+                </span>
+              }
+            />
+          ))}
+        </div>
+
+        {resumo.unassigned > 0 && (
+          <p className="small t2" style={{ margin: 0 }}>
+            <b>{money(resumo.unassigned)}</b> ainda sem pagador definido (inclui a hospedagem).
+            Enquanto isso, o acerto abaixo considera só o que já foi atribuído.
+          </p>
+        )}
+
+        <h3 style={{ margin: 0 }}>Acerto</h3>
+        {acertos.length === 0 ? (
+          <p className="small t2" style={{ margin: 0 }}>Ninguém deve nada a ninguém.</p>
+        ) : (
+          <div className="card card-flush">
+            {acertos.map((a, i) => (
+              <Row key={i} icon="➡️" title={`${a.from} paga para ${a.to}`} value={<span className="num">{money(a.valor)}</span>} />
+            ))}
+          </div>
+        )}
+
+        <div className="sheet-footer stack-2">
+          <button className="btn-primary btn-block" onClick={onClose}>Fechar</button>
+        </div>
+      </div>
     </Sheet>
   );
 }
