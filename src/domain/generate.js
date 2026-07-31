@@ -6,6 +6,7 @@
 //  - (4.6) Duas linhas de transporte de/para "Casa", com datas auto-ajustadas.
 
 import { uid } from './state.js';
+import { num } from './format.js';
 import { cityForDate, periodByTime, foodOrder, tripBounds, HOME } from './dates.js';
 import { getTransportOriginCity, getTransportDestCity, getTransportOrigin, getTransportDest } from './transport.js';
 
@@ -77,31 +78,36 @@ function applyAutoBreakfast(state) {
  * e volta (última cidade → destino Casa, no último dia). A cada regeneração só
  * ajusta a DATA e o lado "Casa"; não sobrescreve campos que o usuário preencheu.
  */
-function applyAutoHomeTransports(state) {
-  const b = tripBounds(state);
-  if (!b) {
-    // sem cidades: não há datas-âncora; remove as linhas automáticas
-    state.transports = state.transports.filter((x) => !x.autoHome);
-    return;
-  }
-
-  let out = state.transports.find((x) => x.autoHome === 'out');
-  if (!out) {
-    out = { id: uid(), autoHome: 'out', date: '', time: '', originCity: '', originPlace: HOME, destCity: '', destPlace: '', mode: '', duration: '', cost: 0, status: 'Planejado', notes: '' };
-    state.transports.push(out);
-  }
-  out.date = b.firstDay;                 // data auto-ajustável
-  out.originPlace = HOME;                // lado "Casa" fixo (identidade da linha)
-  if (!out.destCity && !out.destPlace) out.destCity = b.firstCity ? b.firstCity.city : '';
-
-  let ret = state.transports.find((x) => x.autoHome === 'return');
-  if (!ret) {
-    ret = { id: uid(), autoHome: 'return', date: '', time: '', originCity: '', originPlace: '', destCity: '', destPlace: HOME, mode: '', duration: '', cost: 0, status: 'Planejado', notes: '' };
-    state.transports.push(ret);
-  }
-  ret.date = b.lastDay;                  // data auto-ajustável
-  ret.destPlace = HOME;                  // lado "Casa" fixo
-  if (!ret.originCity && !ret.originPlace) ret.originCity = b.lastCity ? b.lastCity.city : '';
+/**
+ * Remove os transportes de/para "Casa" que versões anteriores criavam
+ * automaticamente no primeiro e no último dia.
+ *
+ * Decisão: eles atrapalhavam mais do que ajudavam — apareciam sem o usuário
+ * pedir, e obrigavam a editar ou apagar algo que não foi criado por ele. Quem
+ * quiser registrar a ida e a volta agora adiciona manualmente, como qualquer
+ * outro transporte.
+ *
+ * Esta função é também a MIGRAÇÃO: viagens já salvas têm essas linhas no
+ * Firestore, e elas precisam desaparecer ao abrir. Só remove as automáticas e
+ * ainda intocadas — se a pessoa editou a linha (preencheu meio, custo ou
+ * horário), ela é preservada como transporte manual, apenas perdendo a marca de
+ * automático. Nunca apagamos trabalho do usuário sem aviso.
+ */
+function removeAutoHomeTransports(state) {
+  state.transports = state.transports.filter((x) => {
+    if (!x.autoHome) return true;
+    const editado =
+      String(x.mode || '').trim() !== '' ||
+      String(x.time || '').trim() !== '' ||
+      num(x.cost) > 0 ||
+      String(x.duration || '').trim() !== '' ||
+      String(x.notes || '').trim() !== '';
+    if (editado) {
+      delete x.autoHome; // vira um transporte manual comum
+      return true;
+    }
+    return false;
+  });
 }
 
 /**
@@ -116,7 +122,7 @@ export function ensureGenerated(state) {
   sortCitiesByDate(state);
 
   applyAutoBreakfast(state);
-  applyAutoHomeTransports(state);
+  removeAutoHomeTransports(state);
 
   ['foodItems', 'attractions', 'otherExpenses'].forEach((k) =>
     state[k].forEach((x) => {

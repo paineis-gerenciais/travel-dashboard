@@ -60,10 +60,9 @@ export function Row({ icon, title, sub, value, cancelled, children, onClick, hig
 export function Sheet({ title, onClose, children }) {
   const panelRef = useRef(null);
 
-  // T-1.8 (acessibilidade): Esc fecha E o foco fica preso dentro do sheet
-  // enquanto ele estiver aberto. Sem o trap, quem navega por teclado ou leitor
-  // de tela "sai" do diálogo para o conteúdo de trás, que está inerte na tela
-  // mas ainda focável — um dos erros de acessibilidade mais comuns em modais.
+  // Acessibilidade: Esc fecha e o foco fica preso dentro do sheet enquanto ele
+  // estiver aberto (sem o trap, quem usa teclado/leitor de tela "sai" do
+  // diálogo para o conteúdo inerte de trás).
   useEffect(() => {
     const anterior = document.activeElement;
     const el = panelRef.current;
@@ -72,9 +71,12 @@ export function Sheet({ title, onClose, children }) {
         el?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') || []
       ).filter((n) => !n.disabled && n.offsetParent !== null);
 
-    // foco inicial no primeiro elemento útil do sheet
-    const primeiros = focaveis();
-    (primeiros[0] || el)?.focus?.();
+    // Foca o PRÓPRIO diálogo, não o primeiro controle. Antes focava o primeiro
+    // elemento focável, que na ordem do DOM é o botão ✕ do cabeçalho — o campo
+    // parecia "selecionar o X" ao abrir a edição, e um Enter distraído fechava
+    // a tela. Focar o contêiner também faz o leitor de tela anunciar o título
+    // do diálogo, em vez de ler um botão solto.
+    el?.focus?.();
 
     const onKey = (e) => {
       if (e.key === 'Escape') { onClose(); return; }
@@ -90,25 +92,26 @@ export function Sheet({ title, onClose, children }) {
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      anterior?.focus?.(); // devolve o foco a quem abriu o sheet
+      anterior?.focus?.();
     };
   }, [onClose]);
 
-  // Correção do "botão excluir escondido no iPhone": com o teclado aberto, o
-  // Safari reduz a área VISÍVEL da tela sem reduzir o `100vh` de layout — um
-  // sheet com altura em vh fica, na prática, maior que o espaço visível, e a
-  // parte de baixo (o rodapé de ações) some atrás do teclado sem jeito de
-  // rolar até lá. A VisualViewport API dá a altura real e visível; usamos ela
-  // para limitar a altura do sheet dinamicamente, sempre que disponível.
-  const [maxH, setMaxH] = useState(null);
+  // Altura visível real (teclado do celular abre e "come" a tela).
+  //
+  // Isto é feito por REF, escrevendo direto no style — de propósito. A versão
+  // anterior guardava a altura em estado do React e ouvia também o evento
+  // `scroll` do visualViewport: no celular, cada rolagem disparava um setState,
+  // que re-renderizava o sheet e fazia a rolagem SALTAR PARA O TOPO. Era o que
+  // acontecia na folha de divisão de despesas, que é longa. Sem estado, não há
+  // re-render; e só `resize` interessa, porque é o que muda com o teclado.
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setMaxH(vv.height * 0.92);
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+    const el = panelRef.current;
+    if (!vv || !el) return;
+    const aplicar = () => { el.style.maxHeight = `${Math.round(vv.height * 0.92)}px`; };
+    aplicar();
+    vv.addEventListener('resize', aplicar);
+    return () => vv.removeEventListener('resize', aplicar);
   }, []);
 
   return (
@@ -117,7 +120,6 @@ export function Sheet({ title, onClose, children }) {
         className="sheet"
         ref={panelRef}
         tabIndex={-1}
-        style={maxH ? { maxHeight: maxH } : undefined}
         role="dialog" aria-modal="true" aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >

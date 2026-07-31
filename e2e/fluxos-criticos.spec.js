@@ -75,8 +75,9 @@ test.describe('fluxos críticos', () => {
 
     // 01→04 de junho = 4 dias de planejamento, não 3:
     //   3 diárias (01, 02, 03 — as noites dormidas)
-    // + o dia 04, o check-out, que entra porque o transporte automático de
-    //   volta para "Casa" é datado nele (comportamento da Fase 4).
+    // + o dia 04, o check-out, que é o dia da volta e faz parte da viagem por
+    //   direito próprio (antes ele só existia por efeito colateral do
+    //   transporte automático de Casa, que foi removido).
     // Conta os marcadores da linha do tempo (role=tab) em vez de casar um texto
     // como "1 / 4": testa a mesma intenção sem depender da formatação.
     await expect(page.getByRole('tab')).toHaveCount(4);
@@ -115,7 +116,7 @@ test.describe('fluxos críticos', () => {
     await expect(tela.getByText('R$ 200,00').first()).toBeVisible();
   });
 
-  test('divisão de despesas abre e mostra a cota por pessoa (T-1.7)', async ({ page }) => {
+  test('divisão de despesas mostra o que cada um pagou e deve', async ({ page }) => {
     await criarViagem(page, 'Viagem Split');
     await cadastrarCidade(page, {
       cidade: 'Madri', checkin: '2030-09-01', checkout: '2030-09-03', diaria: '10000',
@@ -126,7 +127,17 @@ test.describe('fluxos críticos', () => {
 
     const dialogo = page.getByRole('dialog', { name: 'Divisão de despesas' });
     await expect(dialogo).toBeVisible();
-    await expect(dialogo.getByText('Cota por pessoa')).toBeVisible();
+
+    // Não existe mais uma "cota por pessoa" única: com rateio percentual por
+    // despesa, cada participante deve um valor próprio. A tela mostra, por
+    // pessoa, quanto pagou e quanto deve.
+    await expect(dialogo.getByText('Total da viagem')).toBeVisible();
+    await expect(dialogo.getByText(/Pagou .* · deve /).first()).toBeVisible();
+    await expect(dialogo.getByRole('heading', { name: 'Acerto' })).toBeVisible();
+
+    // e dá para expandir os gastos de um participante (lista editável)
+    await dialogo.getByRole('button', { name: /ver gastos/i }).first().click();
+    await expect(dialogo.getByRole('button', { name: /ocultar gastos/i })).toBeVisible();
   });
 
   test('compartilhar abre a folha de convite', async ({ page }) => {

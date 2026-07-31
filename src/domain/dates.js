@@ -104,6 +104,17 @@ export function uniqueCities(state) {
 export function allPlanningDates(state) {
   const map = new Map();
   datesFromCities(state).forEach((d) => map.set(d.date, d.city));
+
+  // O dia do CHECK-OUT também é dia de viagem: é quando se volta para casa.
+  // Antes ele só aparecia por efeito colateral — o transporte automático de
+  // volta era datado nele. Com a remoção desses transportes automáticos, o dia
+  // passa a existir por direito próprio (decisão registrada em
+  // DEPLOY-AJUSTES-POS-FASE1.md). Ele não gera diária: `dayLodging` usa
+  // [start, end) exclusivo, então o custo de hospedagem segue correto.
+  const bounds = tripBounds(state);
+  if (bounds && !map.has(bounds.lastDay)) {
+    map.set(bounds.lastDay, bounds.lastCity?.city || '');
+  }
   [...state.foodItems, ...state.attractions, ...state.otherExpenses].forEach((x) => {
     if (x.date && !map.has(x.date)) map.set(x.date, x.city || inferCityForDate(state, x.date) || '');
   });
