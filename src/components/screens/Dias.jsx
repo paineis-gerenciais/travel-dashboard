@@ -7,7 +7,7 @@ import {
   getTransportDurationMinutes, minutesToLabel,
 } from '../../domain/transport.js';
 import { activeCost } from '../../domain/costs.js';
-import { participants } from '../../domain/split.js';
+import PaymentFields from '../PaymentFields.jsx';
 import { Row, StatusChip, Sheet, EmptyState, Banner, Stepper, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 import DurationInput from '../DurationInput.jsx';
@@ -37,8 +37,15 @@ const dayTotal = ({ transports, foods, attractions, others }) =>
 export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
   const { state, actions } = useTrip();
   const dates = allPlanningDates(state);
-  // T-1.15: abre no dia mais próximo de hoje (não no dia 1)
-  const [idx, setIdx] = useState(() => nearestDayIndex(allPlanningDates(state), todayISO()));
+  // T-1.15: abre no dia mais próximo de hoje (não no dia 1).
+  //
+  // Não dá para calcular isso no inicializador do useState: o TripProvider
+  // renderiza a tela ANTES de o Firestore responder, com estado vazio. O
+  // inicializador roda uma única vez, então o índice congelava em 0 e nunca
+  // mais era recalculado — a tela sempre abria no primeiro dia. Agora o cálculo
+  // acontece quando os dias realmente aparecem, uma vez por viagem.
+  const [idx, setIdx] = useState(0);
+  const jaPosicionou = useRef(false);
   const [editing, setEditing] = useState(null); // {kind, index}
   const [highlightId, setHighlightId] = useState(null); // T-1.16: item destacado ao vir de Mensagens
   const coverage = useMemo(() => validateCityCoverage(state), [state]);
@@ -47,6 +54,18 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
   const gesture = useRef({ startX: 0, dx: 0, dragging: false, width: 0 });
 
   const i = Math.min(idx, Math.max(0, dates.length - 1));
+
+  // Posiciona no dia de hoje na primeira vez que os dias existem.
+  useEffect(() => {
+    if (jaPosicionou.current) return;
+    const all = allPlanningDates(state);
+    if (all.length === 0) return;
+    jaPosicionou.current = true;
+    const alvo = nearestDayIndex(all, todayISO());
+    direction.current = 1;
+    setIdx(alvo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.cities, state.transports]);
 
   // T-1.16: veio de "ir para o item" — salta para o dia daquele item e o
   // destaca por alguns segundos, para a pessoa achá-lo na lista.
@@ -421,13 +440,8 @@ function ItemSheet({ kind, index, onClose }) {
           <MoneyInput value={num(item.cost)} onChange={(v) => set('cost', v)} className="input-money" />
         </Field>
 
-        {/* T-1.7: quem pagou — alimenta a divisão de despesas em Custos */}
-        <Field label="Quem pagou">
-          <select value={item.paidBy || ''} onChange={(e) => set('paidBy', e.target.value)}>
-            <option value="">Ainda não definido</option>
-            {participants(state).map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </Field>
+        {/* Pagamento e rateio — alimentam a divisão de despesas em Custos */}
+        <PaymentFields item={item} valor={num(item.cost)} onChange={set} />
 
         <div className="field">
           <span>Status</span>

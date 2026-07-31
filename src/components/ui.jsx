@@ -60,24 +60,36 @@ export function Row({ icon, title, sub, value, cancelled, children, onClick, hig
 export function Sheet({ title, onClose, children }) {
   const panelRef = useRef(null);
 
-  // T-1.8 (acessibilidade): Esc fecha E o foco fica preso dentro do sheet
-  // enquanto ele estiver aberto. Sem o trap, quem navega por teclado ou leitor
-  // de tela "sai" do diálogo para o conteúdo de trás, que está inerte na tela
-  // mas ainda focável — um dos erros de acessibilidade mais comuns em modais.
+  // `onClose` costuma chegar como arrow inline (`onClose={() => setX(null)}`),
+  // ou seja, uma função NOVA a cada renderização. Guardá-la num ref permite que
+  // os efeitos abaixo tenham dependências vazias — sem isso, eles re-executavam
+  // a cada tecla digitada.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Foco inicial: SÓ na montagem.
+  //
+  // Este era o bug do "a cada caractere a seleção sai do campo": o efeito
+  // dependia de `onClose`, então re-executava a cada renderização — e cada
+  // tecla digitada renderiza. O `focus()` roubava o cursor do campo a cada
+  // letra. Antes disso, a mesma re-execução focava o botão ✕ (o primeiro
+  // focável), que era o sintoma anterior. Mesma causa, dois sintomas.
   useEffect(() => {
     const anterior = document.activeElement;
+    panelRef.current?.focus?.();
+    return () => anterior?.focus?.();
+  }, []);
+
+  // Esc fecha + foco preso dentro do diálogo (acessibilidade).
+  useEffect(() => {
     const el = panelRef.current;
     const focaveis = () =>
       Array.from(
         el?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') || []
       ).filter((n) => !n.disabled && n.offsetParent !== null);
 
-    // foco inicial no primeiro elemento útil do sheet
-    const primeiros = focaveis();
-    (primeiros[0] || el)?.focus?.();
-
     const onKey = (e) => {
-      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'Escape') { onCloseRef.current?.(); return; }
       if (e.key !== 'Tab') return;
       const lista = focaveis();
       if (lista.length === 0) return;
@@ -88,43 +100,35 @@ export function Sheet({ title, onClose, children }) {
     };
 
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      anterior?.focus?.(); // devolve o foco a quem abriu o sheet
-    };
-  }, [onClose]);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
-  // Correção do "botão excluir escondido no iPhone": com o teclado aberto, o
-  // Safari reduz a área VISÍVEL da tela sem reduzir o `100vh` de layout — um
-  // sheet com altura em vh fica, na prática, maior que o espaço visível, e a
-  // parte de baixo (o rodapé de ações) some atrás do teclado sem jeito de
-  // rolar até lá. A VisualViewport API dá a altura real e visível; usamos ela
-  // para limitar a altura do sheet dinamicamente, sempre que disponível.
-  const [maxH, setMaxH] = useState(null);
+  // Altura visível real (o teclado do celular "come" a tela). Escrito direto no
+  // elemento via ref, sem estado: guardar isso em estado do React fazia a
+  // rolagem saltar para o topo a cada evento do visual viewport.
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setMaxH(vv.height * 0.92);
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+    const el = panelRef.current;
+    if (!vv || !el) return;
+    const aplicar = () => { el.style.maxHeight = `${Math.round(vv.height * 0.92)}px`; };
+    aplicar();
+    vv.addEventListener('resize', aplicar);
+    return () => vv.removeEventListener('resize', aplicar);
   }, []);
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop" onClick={() => onCloseRef.current?.()}>
       <div
         className="sheet"
         ref={panelRef}
         tabIndex={-1}
-        style={maxH ? { maxHeight: maxH } : undefined}
         role="dialog" aria-modal="true" aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sheet-grip" aria-hidden="true" />
         <div className="sheet-head">
           <h3>{title}</h3>
-          <button className="btn-ghost btn-sm" onClick={onClose} aria-label="Fechar">✕</button>
+          <button className="btn-ghost btn-sm" onClick={() => onCloseRef.current?.()} aria-label="Fechar">✕</button>
         </div>
         {children}
       </div>

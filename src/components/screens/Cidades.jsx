@@ -5,6 +5,8 @@ import { daysBetween, uniqueCities, validateCityCoverage, cityColorClass } from 
 import { totals } from '../../domain/costs.js';
 import { Row, StatusChip, Sheet, EmptyState, Banner, Metric, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
+import PaymentFields from '../PaymentFields.jsx';
+import { daysBetween as diasEntre } from '../../domain/dates.js';
 
 /** CIDADES — o esqueleto da viagem. Reconstruída sem tabela (Fase R3). */
 export default function Cidades() {
@@ -22,7 +24,7 @@ export default function Cidades() {
       <div className="container stack">
         <h2>Cidades</h2>
 
-        <div className="grid-2">
+        <div className="grid-metrics">
           <Metric label="Cidades" value={uniqueCities(state).length} />
           <Metric label="Diárias" value={nights} />
           <Metric label="Hospedagem" value={money(t.lodging)} />
@@ -163,6 +165,13 @@ function CitySheet({ index, onClose, onDelete }) {
         <Field label="Custo por diária">
           <MoneyInput value={num(c.nightly)} onChange={(v) => actions.setCityField(index, 'nightly', v)} className="input-money" />
         </Field>
+
+        {/* Item 5: a hospedagem também aceita pagador e rateio */}
+        <PaymentFields
+          item={c}
+          valor={diasEntre(c.start, c.end) * num(c.nightly)}
+          onChange={(key, value) => actions.setCityField(index, key, value)}
+        />
 
         <div className="field">
           <span>Status</span>

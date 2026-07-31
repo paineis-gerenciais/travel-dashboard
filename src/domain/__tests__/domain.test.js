@@ -35,7 +35,11 @@ import {
   paidPct,
 } from '../costs.js';
 import { ensureGenerated, deleteCityCascade, cloneTripState } from '../generate.js';
-import { splitSummary, settlements, participants } from '../split.js';
+import {
+  splitSummary, settlements, participants, participantName,
+  allCostRows, effectiveSplit, rowsForParticipant,
+  settlementKey, withSettlementStatus,
+} from '../split.js';
 import { pendingReminders } from '../../lib/reminders.js';
 import { gmaps, getTransportCost, durationToMinutes, minutesToLabel } from '../transport.js';
 
@@ -208,7 +212,7 @@ describe('ensureGenerated', () => {
     expect(state.foodItems.length).toBe(1);
   });
 
-  it('cria 2 transportes de/para Casa com datas nas pontas da viagem', () => {
+  it('NÃO cria transportes automáticos de/para Casa', () => {
     const state = normalizeState({
       cities: [
         { id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04' },
@@ -216,17 +220,33 @@ describe('ensureGenerated', () => {
       ],
     });
     ensureGenerated(state);
-    const out = state.transports.find((x) => x.autoHome === 'out');
-    const ret = state.transports.find((x) => x.autoHome === 'return');
-    expect(out.originPlace).toBe(HOME);
-    expect(out.date).toBe('2026-06-01');
-    expect(out.destCity).toBe('Lisboa');
-    expect(ret.destPlace).toBe(HOME);
-    expect(ret.date).toBe('2026-06-07');
-    expect(ret.originCity).toBe('Porto');
-    // regenerar não duplica
+    expect(state.transports.length).toBe(0);
+  });
+
+  it('MIGRAÇÃO: remove transportes automáticos antigos e intocados', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04' }],
+      transports: [
+        { id: 't1', autoHome: 'out', date: '2026-06-01', originPlace: 'Casa', destCity: 'Lisboa', mode: '', cost: 0 },
+        { id: 't2', autoHome: 'return', date: '2026-06-04', originCity: 'Lisboa', destPlace: 'Casa', mode: '', cost: 0 },
+      ],
+    });
     ensureGenerated(state);
-    expect(state.transports.filter((x) => x.autoHome).length).toBe(2);
+    expect(state.transports.length).toBe(0);
+  });
+
+  it('MIGRAÇÃO: preserva o transporte automático que o usuário EDITOU', () => {
+    const state = normalizeState({
+      cities: [{ id: 'a', city: 'Lisboa', start: '2026-06-01', end: '2026-06-04' }],
+      transports: [
+        { id: 't1', autoHome: 'out', date: '2026-06-01', originPlace: 'Casa', destCity: 'Lisboa', mode: 'Voo', cost: 620 },
+        { id: 't2', autoHome: 'return', date: '2026-06-04', originCity: 'Lisboa', destPlace: 'Casa', mode: '', cost: 0 },
+      ],
+    });
+    ensureGenerated(state);
+    expect(state.transports.length).toBe(1);
+    expect(state.transports[0].id).toBe('t1');
+    expect(state.transports[0].autoHome).toBeUndefined(); // virou manual
   });
 });
 
@@ -536,75 +556,142 @@ describe('cloneTripState', () => {
 });
 
 
-/* ---------- T-1.7: divisão de despesas ---------- */
-describe('splitSummary / settlements', () => {
-  const state = () => normalizeState({
-    settings: { travelers: 2, participants: ['Ana', 'Bruno'] },
-    attractions: [
-      { id: 'a1', date: '2026-06-02', name: 'Museu', cost: 100, status: 'Planejado', paidBy: 'Ana' },
-      { id: 'a2', date: '2026-06-02', name: 'Passeio', cost: 60, status: 'Planejado', paidBy: 'Bruno' },
-    ],
-    otherExpenses: [
-      { id: 'o1', date: '2026-06-02', name: 'Táxi', cost: 40, status: 'Planejado' }, // sem paidBy
-      { id: 'o2', date: '2026-06-02', name: 'Cancelado', cost: 999, status: 'Cancelado', paidBy: 'Ana' },
-    ],
+/* ---------- Divisão de despesas: ids, percentuais e hospedagem ---------- */
+describe('divisão de despesas', () => {
+  const ANA = 'p-ana';
+  const BRU = 'p-bru';
+
+  const base = (extra = {}) => normalizeState({
+    settings: { participants: [{ id: ANA, name: 'Ana' }, { id: BRU, name: 'Bruno' }] },
+    cities: [{ id: 'c1', city: 'Lisboa', start: '2026-06-01', end: '2026-06-03', nightly: 100, status: 'Reservado' }],
+    attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', cost: 100, status: 'Planejado', paidBy: ANA }],
+    ...extra,
   });
 
-  it('usa os participantes cadastrados', () => {
-    expect(participants(state())).toEqual(['Ana', 'Bruno']);
+  it('participantes vêm com id e nome', () => {
+    expect(participants(base())).toEqual([{ id: ANA, name: 'Ana' }, { id: BRU, name: 'Bruno' }]);
   });
 
-  it('cai em rótulos genéricos quando não há participantes cadastrados', () => {
-    const s = normalizeState({ settings: { travelers: 3 } });
-    expect(participants(s)).toEqual(['Viajante 1', 'Viajante 2', 'Viajante 3']);
+  it('gera rótulos genéricos quando não há participantes cadastrados', () => {
+    const p = participants(normalizeState({ settings: { travelers: 3 } }));
+    expect(p.map((x) => x.name)).toEqual(['Viajante 1', 'Viajante 2', 'Viajante 3']);
   });
 
-  it('ignora itens cancelados (mesma regra do resto do app)', () => {
-    const r = splitSummary(state());
-    expect(r.total).toBe(200); // 100 + 60 + 40, sem os 999 cancelados
+  it('inclui a HOSPEDAGEM como linha de custo (2 diárias de 100)', () => {
+    const rows = allCostRows(base());
+    const hosp = rows.find((r) => r.kind === 'cities');
+    expect(hosp.valor).toBe(200);
   });
 
-  it('separa o que já tem pagador do que ainda não tem', () => {
-    const r = splitSummary(state());
-    expect(r.unassigned).toBe(40);
-    expect(r.rows.find((x) => x.person === 'Ana').paid).toBe(100);
-    expect(r.rows.find((x) => x.person === 'Bruno').paid).toBe(60);
+  it('hospedagem aceita quem pagou', () => {
+    const st = base();
+    st.cities[0].paidBy = BRU;
+    const r = splitSummary(st);
+    expect(r.rows.find((x) => x.id === BRU).paid).toBe(200);
+    expect(r.unassigned).toBe(0); // 200 hospedagem + 100 museu, ambos com pagador
   });
 
-  it('calcula o saldo de cada um (pago − devido)', () => {
-    const r = splitSummary(state());
-    expect(r.share).toBe(100);   // 200 / 2
-    expect(r.rows.find((x) => x.person === 'Ana').balance).toBe(0);
-    expect(r.rows.find((x) => x.person === 'Bruno').balance).toBe(-40);
+  it('sem split definido, divide igualmente', () => {
+    const r = splitSummary(base());
+    expect(r.total).toBe(300);
+    expect(r.rows.find((x) => x.id === ANA).owed).toBe(150);
+    expect(r.rows.find((x) => x.id === BRU).owed).toBe(150);
   });
 
-  it('inclui a hospedagem no total do grupo como não atribuída', () => {
-    const r = splitSummary(state(), 300);
-    expect(r.total).toBe(500);
-    expect(r.unassigned).toBe(340);
+  it('respeita o percentual por participante', () => {
+    const st = base();
+    st.attractions[0].split = { [ANA]: 80, [BRU]: 20 };
+    const r = splitSummary(st);
+    // museu 100 -> Ana 80 / Bruno 20 ; hospedagem 200 -> 100/100 (igual)
+    expect(r.rows.find((x) => x.id === ANA).owed).toBe(180);
+    expect(r.rows.find((x) => x.id === BRU).owed).toBe(120);
+  });
+
+  it('normaliza percentuais que não somam 100', () => {
+    const st = base();
+    st.attractions[0].split = { [ANA]: 3, [BRU]: 1 }; // proporcional 75/25
+    const pct = effectiveSplit(st, st.attractions[0]);
+    expect(pct[ANA]).toBe(75);
+    expect(pct[BRU]).toBe(25);
+  });
+
+  it('ignora cancelados', () => {
+    const st = base({ otherExpenses: [{ id: 'o1', date: '2026-06-02', name: 'X', cost: 999, status: 'Cancelado', paidBy: ANA }] });
+    expect(splitSummary(st).total).toBe(300);
+  });
+
+  it('marca como não atribuído o que não tem pagador', () => {
+    const st = base();
+    expect(splitSummary(st).unassigned).toBe(200); // a hospedagem
   });
 
   it('acerto: quem deve paga a quem tem a receber', () => {
-    const s = normalizeState({
-      settings: { participants: ['Ana', 'Bruno'] },
-      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Tudo', cost: 200, status: 'Planejado', paidBy: 'Ana' }],
-    });
-    const acertos = settlements(splitSummary(s));
-    expect(acertos).toEqual([{ from: 'Bruno', to: 'Ana', valor: 100 }]);
+    const st = base();
+    st.cities[0].nightly = 0; // só o museu de 100, pago pela Ana
+    const acertos = settlements(splitSummary(st));
+    expect(acertos).toHaveLength(1);
+    expect(acertos[0]).toMatchObject({ fromId: BRU, toId: ANA, from: 'Bruno', to: 'Ana', valor: 50 });
   });
 
   it('sem dívidas, não gera acerto', () => {
-    const s = normalizeState({
-      settings: { participants: ['Ana', 'Bruno'] },
-      attractions: [
-        { id: 'a1', date: '2026-06-02', name: 'X', cost: 50, status: 'Planejado', paidBy: 'Ana' },
-        { id: 'a2', date: '2026-06-02', name: 'Y', cost: 50, status: 'Planejado', paidBy: 'Bruno' },
-      ],
-    });
-    expect(settlements(splitSummary(s))).toEqual([]);
+    const st = base();
+    st.cities[0].nightly = 0;
+    st.attractions[0].split = { [ANA]: 100 }; // Ana pagou e é 100% responsável
+    expect(settlements(splitSummary(st))).toEqual([]);
+  });
+
+  it('lista as linhas de um participante, com sua parte', () => {
+    const st = base();
+    const rows = rowsForParticipant(st, ANA);
+    expect(rows.length).toBe(2); // hospedagem (responsável) + museu (pagou)
+    expect(rows.find((r) => r.kind === 'attractions').parte).toBe(50);
   });
 });
 
+/* ---------- Migração: nomes -> identificadores ---------- */
+describe('migrateParticipants', () => {
+  it('converte lista de nomes em objetos com id', () => {
+    const s = normalizeState({ settings: { participants: ['Ana', 'Bruno'] } });
+    expect(s.settings.participants.every((p) => p.id && p.name)).toBe(true);
+    expect(s.settings.participants.map((p) => p.name)).toEqual(['Ana', 'Bruno']);
+  });
+
+  it('converte paidBy que guardava o NOME para o id correspondente', () => {
+    const s = normalizeState({
+      settings: { participants: ['Ana', 'Bruno'] },
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', cost: 50, paidBy: 'Bruno' }],
+    });
+    const bruno = s.settings.participants.find((p) => p.name === 'Bruno');
+    expect(s.attractions[0].paidBy).toBe(bruno.id);
+  });
+
+  it('renomear NÃO quebra o vínculo (o id não muda)', () => {
+    const s = normalizeState({
+      settings: { participants: ['Ana'] },
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', cost: 50, paidBy: 'Ana' }],
+    });
+    const id = s.settings.participants[0].id;
+    s.settings.participants[0].name = 'Ana Silva';   // renomeia
+    const depois = normalizeState(s);                // recarrega
+    expect(depois.attractions[0].paidBy).toBe(id);   // segue apontando para ela
+    expect(participantName(depois, id)).toBe('Ana Silva');
+  });
+
+  it('é idempotente (rodar de novo não altera nada)', () => {
+    const a = normalizeState({ settings: { participants: ['Ana'] } });
+    const idAntes = a.settings.participants[0].id;
+    const b = normalizeState(a);
+    expect(b.settings.participants[0].id).toBe(idAntes);
+  });
+
+  it('descarta paidBy que aponta para participante inexistente', () => {
+    const s = normalizeState({
+      settings: { participants: ['Ana'] },
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', cost: 50, paidBy: 'Fantasma' }],
+    });
+    expect(s.attractions[0].paidBy).toBe('');
+  });
+});
 
 /* ---------- T-1.11: lembretes locais ---------- */
 describe('pendingReminders', () => {
@@ -647,16 +734,113 @@ describe('allPlanningDates após ensureGenerated', () => {
     const state = normalizeState({
       cities: [{ id: 'a', city: 'Lisboa', start: '2030-06-01', end: '2030-06-04' }],
     });
-    // sem geração automática: só as noites dormidas
-    expect(allPlanningDates(state).map((d) => d.date)).toEqual([
-      '2030-06-01', '2030-06-02', '2030-06-03',
-    ]);
-
-    ensureGenerated(state);
-    // com geração: o transporte automático de volta cai no check-out, e aquele
-    // dia passa a fazer parte da viagem (comportamento da Fase 4, item 4.5/4.6)
+    // allPlanningDates já inclui o check-out, independente da geração
     expect(allPlanningDates(state).map((d) => d.date)).toEqual([
       '2030-06-01', '2030-06-02', '2030-06-03', '2030-06-04',
     ]);
+
+    ensureGenerated(state);
+    // O dia do check-out faz parte da viagem POR DIREITO PRÓPRIO — é o dia da
+    // volta. Antes ele só existia porque o transporte automático de Casa era
+    // datado nele; com a remoção desses transportes, allPlanningDates o inclui
+    // diretamente.
+    expect(allPlanningDates(state).map((d) => d.date)).toEqual([
+      '2030-06-01', '2030-06-02', '2030-06-03', '2030-06-04',
+    ]);
+    expect(state.transports.length).toBe(0); // e sem nenhum transporte criado
+  });
+});
+
+
+/* ---------- Confirmação de acerto ---------- */
+describe('withSettlementStatus', () => {
+  const acerto = { fromId: 'p2', toId: 'p1', from: 'Bruno', to: 'Ana', valor: 50 };
+
+  it('acerto não confirmado aparece como pendente', () => {
+    const st = normalizeState({});
+    expect(withSettlementStatus(st, [acerto])[0].confirmado).toBe(false);
+  });
+
+  it('acerto confirmado aparece como confirmado', () => {
+    const st = normalizeState({ settings: { settlementsDone: [{ key: settlementKey(acerto) }] } });
+    expect(withSettlementStatus(st, [acerto])[0].confirmado).toBe(true);
+  });
+
+  it('se o valor da dívida muda, a confirmação antiga não vale mais', () => {
+    const st = normalizeState({ settings: { settlementsDone: [{ key: settlementKey(acerto) }] } });
+    const novo = { ...acerto, valor: 80 }; // surgiu uma despesa nova
+    expect(withSettlementStatus(st, [novo])[0].confirmado).toBe(false);
+  });
+});
+
+
+/* ---------- num(): números reais não podem passar pelo parser de texto ---------- */
+describe('num', () => {
+  it('preserva floats com muitas casas (o bug dos percentuais gigantes)', () => {
+    // Antes: virava a string "33.333333333333336", o ponto era tratado como
+    // separador de milhar e o resultado saía 33333333333333336.
+    expect(num(100 / 3)).toBeCloseTo(33.333333333333336, 10);
+    expect(num(1 / 3)).toBeCloseTo(0.3333333333333333, 10);
+  });
+
+  it('preserva números normais', () => {
+    expect(num(250)).toBe(250);
+    expect(num(1750.5)).toBe(1750.5);
+    expect(num(0)).toBe(0);
+  });
+
+  it('continua entendendo texto no formato brasileiro', () => {
+    expect(num('1.750,00')).toBe(1750);
+    expect(num('R$ 1.234,56')).toBe(1234.56);
+    expect(num('250')).toBe(250);
+  });
+
+  it('trata vazio, nulo e inválido como zero', () => {
+    expect(num('')).toBe(0);
+    expect(num(null)).toBe(0);
+    expect(num(undefined)).toBe(0);
+    expect(num('abc')).toBe(0);
+    expect(num(NaN)).toBe(0);
+    expect(num(Infinity)).toBe(0);
+  });
+});
+
+/* ---------- Percentuais e valores da divisão em escala correta ---------- */
+describe('rateio entre 3 pessoas (caso das imagens)', () => {
+  it('divisão igual entre 3 dá 33,33% e um terço do valor', () => {
+    const A = 'f1'; const B = 'f2'; const C = 'f3';
+    const st = normalizeState({
+      settings: { participants: [{ id: A, name: 'f1' }, { id: B, name: 'f2' }, { id: C, name: 'f3' }] },
+      attractions: [{ id: 'a1', date: '2026-08-08', name: 'Outros', cost: 210, status: 'Planejado' }],
+    });
+    const pct = effectiveSplit(st, st.attractions[0]);
+    expect(pct[A]).toBeCloseTo(33.3333, 3);
+    expect(pct[A]).toBeLessThan(34);              // e não 3,3 × 10¹⁶
+    const parte = (210 * pct[A]) / 100;
+    expect(parte).toBeCloseTo(70, 6);             // R$ 70,00 — não R$ 70 quatrilhões
+  });
+
+  it('percentuais iguais a 1 cada normalizam para 33,33% (não somam errado)', () => {
+    const A = 'f1'; const B = 'f2'; const C = 'f3';
+    const st = normalizeState({
+      settings: { participants: [{ id: A, name: 'f1' }, { id: B, name: 'f2' }, { id: C, name: 'f3' }] },
+      cities: [{ id: 'c1', city: 'Rio', start: '2026-08-01', end: '2026-08-08', nightly: 250 }],
+    });
+    st.cities[0].split = { [A]: 1, [B]: 1, [C]: 1 };
+    const pct = effectiveSplit(st, st.cities[0]);
+    expect(pct[A]).toBeCloseTo(33.3333, 3);
+    const total = pct[A] + pct[B] + pct[C];
+    expect(total).toBeCloseTo(100, 6);
+  });
+
+  it('a soma das partes bate com o valor total da despesa', () => {
+    const A = 'f1'; const B = 'f2'; const C = 'f3';
+    const st = normalizeState({
+      settings: { participants: [{ id: A, name: 'f1' }, { id: B, name: 'f2' }, { id: C, name: 'f3' }] },
+      attractions: [{ id: 'a1', date: '2026-08-08', name: 'X', cost: 100, status: 'Planejado' }],
+    });
+    const r = splitSummary(st);
+    const soma = r.rows.reduce((acc, x) => acc + x.owed, 0);
+    expect(soma).toBeCloseTo(r.total, 6);
   });
 });

@@ -186,9 +186,80 @@ export function TripProvider({ tripId, user, children }) {
     addChecklist(item = '') {
       mutate((s) => s.checklist.push({ id: uid(), category: 'Outros', item, responsible: '', priority: 'Média', status: 'Pendente', notes: '', done: false }));
     },
-    /** T-1.7: nomes dos participantes da divisão de despesas. */
+    /**
+     * Participantes da divisão de despesas: [{ id, name }].
+     * Renomear preserva o `id`, então nenhuma despesa perde o vínculo — era o
+     * bug do modelo antigo, que guardava o nome dentro de cada item.
+     */
     setParticipants(list) {
-      mutate((s) => { s.settings.participants = list.map((x) => String(x).trim()).filter(Boolean); });
+      mutate((s) => {
+        s.settings.participants = (list || [])
+          .filter((p) => p && String(p.name || '').trim())
+          .map((p) => ({ id: p.id || uid(), name: String(p.name).trim() }));
+      });
+    },
+    /**
+     * Materializa os participantes "automáticos" (Viajante 1, Viajante 2…) como
+     * registros de verdade.
+     *
+     * Enquanto ninguém é cadastrado, a lista é gerada na hora a partir do
+     * número de viajantes — e esses ids não existem no banco. Se alguém
+     * escolhia "Viajante 1" como pagador, a referência era descartada no
+     * próximo carregamento e o campo voltava vazio. Chamar isto antes de
+     * atribuir um pagador resolve: os participantes passam a existir de fato,
+     * mantendo os mesmos ids já exibidos na tela.
+     */
+    ensureParticipants(lista) {
+      mutate((s) => {
+        if ((s.settings.participants || []).length > 0) return;
+        s.settings.participants = (lista || []).map((p) => ({ id: p.id, name: p.name }));
+      });
+    },
+    /** Confirma (ou desfaz a confirmação de) um acerto de contas. */
+    toggleSettlementDone(key, confirmado) {
+      mutate((s) => {
+        const atuais = (s.settings.settlementsDone || []).filter((x) => x.key !== key);
+        s.settings.settlementsDone = confirmado
+          ? [...atuais, { key, at: new Date().toISOString() }]
+          : atuais;
+      });
+    },
+    addParticipant(name) {
+      mutate((s) => {
+        const nome = String(name || '').trim();
+        if (!nome) return;
+        s.settings.participants = [...(s.settings.participants || []), { id: uid(), name: nome }];
+      });
+    },
+    renameParticipant(id, name) {
+      mutate((s) => {
+        const p = (s.settings.participants || []).find((x) => x.id === id);
+        if (p) p.name = String(name || '').trim();
+      });
+    },
+    /** Remove o participante e limpa as referências a ele nas despesas. */
+    removeParticipant(id) {
+      mutate((s) => {
+        s.settings.participants = (s.settings.participants || []).filter((p) => p.id !== id);
+        ['cities', 'transports', 'foodItems', 'attractions', 'otherExpenses'].forEach((k) => {
+          s[k].forEach((x) => {
+            if (x.paidBy === id) x.paidBy = '';
+            if (x.split && x.split[id] !== undefined) {
+              const novo = { ...x.split };
+              delete novo[id];
+              x.split = Object.keys(novo).length ? novo : undefined;
+            }
+          });
+        });
+      });
+    },
+    /** Edita um campo de uma linha de custo de qualquer coleção (usado na divisão). */
+    setRowField(kind, id, key, value) {
+      mutate((s) => {
+        const alvo = (s[kind] || []).find((x) => x.id === id);
+        if (!alvo) return;
+        alvo[key] = key === 'cost' || key === 'nightly' ? num(value) : value;
+      });
     },
     toggleChecklist(index, checked) {
       const label = state.checklist[index]?.item || 'um item';
