@@ -772,3 +772,75 @@ describe('withSettlementStatus', () => {
     expect(withSettlementStatus(st, [novo])[0].confirmado).toBe(false);
   });
 });
+
+
+/* ---------- num(): números reais não podem passar pelo parser de texto ---------- */
+describe('num', () => {
+  it('preserva floats com muitas casas (o bug dos percentuais gigantes)', () => {
+    // Antes: virava a string "33.333333333333336", o ponto era tratado como
+    // separador de milhar e o resultado saía 33333333333333336.
+    expect(num(100 / 3)).toBeCloseTo(33.333333333333336, 10);
+    expect(num(1 / 3)).toBeCloseTo(0.3333333333333333, 10);
+  });
+
+  it('preserva números normais', () => {
+    expect(num(250)).toBe(250);
+    expect(num(1750.5)).toBe(1750.5);
+    expect(num(0)).toBe(0);
+  });
+
+  it('continua entendendo texto no formato brasileiro', () => {
+    expect(num('1.750,00')).toBe(1750);
+    expect(num('R$ 1.234,56')).toBe(1234.56);
+    expect(num('250')).toBe(250);
+  });
+
+  it('trata vazio, nulo e inválido como zero', () => {
+    expect(num('')).toBe(0);
+    expect(num(null)).toBe(0);
+    expect(num(undefined)).toBe(0);
+    expect(num('abc')).toBe(0);
+    expect(num(NaN)).toBe(0);
+    expect(num(Infinity)).toBe(0);
+  });
+});
+
+/* ---------- Percentuais e valores da divisão em escala correta ---------- */
+describe('rateio entre 3 pessoas (caso das imagens)', () => {
+  it('divisão igual entre 3 dá 33,33% e um terço do valor', () => {
+    const A = 'f1'; const B = 'f2'; const C = 'f3';
+    const st = normalizeState({
+      settings: { participants: [{ id: A, name: 'f1' }, { id: B, name: 'f2' }, { id: C, name: 'f3' }] },
+      attractions: [{ id: 'a1', date: '2026-08-08', name: 'Outros', cost: 210, status: 'Planejado' }],
+    });
+    const pct = effectiveSplit(st, st.attractions[0]);
+    expect(pct[A]).toBeCloseTo(33.3333, 3);
+    expect(pct[A]).toBeLessThan(34);              // e não 3,3 × 10¹⁶
+    const parte = (210 * pct[A]) / 100;
+    expect(parte).toBeCloseTo(70, 6);             // R$ 70,00 — não R$ 70 quatrilhões
+  });
+
+  it('percentuais iguais a 1 cada normalizam para 33,33% (não somam errado)', () => {
+    const A = 'f1'; const B = 'f2'; const C = 'f3';
+    const st = normalizeState({
+      settings: { participants: [{ id: A, name: 'f1' }, { id: B, name: 'f2' }, { id: C, name: 'f3' }] },
+      cities: [{ id: 'c1', city: 'Rio', start: '2026-08-01', end: '2026-08-08', nightly: 250 }],
+    });
+    st.cities[0].split = { [A]: 1, [B]: 1, [C]: 1 };
+    const pct = effectiveSplit(st, st.cities[0]);
+    expect(pct[A]).toBeCloseTo(33.3333, 3);
+    const total = pct[A] + pct[B] + pct[C];
+    expect(total).toBeCloseTo(100, 6);
+  });
+
+  it('a soma das partes bate com o valor total da despesa', () => {
+    const A = 'f1'; const B = 'f2'; const C = 'f3';
+    const st = normalizeState({
+      settings: { participants: [{ id: A, name: 'f1' }, { id: B, name: 'f2' }, { id: C, name: 'f3' }] },
+      attractions: [{ id: 'a1', date: '2026-08-08', name: 'X', cost: 100, status: 'Planejado' }],
+    });
+    const r = splitSummary(st);
+    const soma = r.rows.reduce((acc, x) => acc + x.owed, 0);
+    expect(soma).toBeCloseTo(r.total, 6);
+  });
+});
