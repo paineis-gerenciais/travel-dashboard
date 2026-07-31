@@ -115,6 +115,11 @@ p{margin:0 0 var(--sp-3)}
 .stack-2{display:grid;gap:var(--sp-2)}
 .row-between{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
 .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3)}
+/* Grade de MÉTRICAS: 2 colunas no celular, 4 no desktop. Separada da .grid-2
+   de propósito — a .grid-2 é usada em formulários, e espremer um campo de data
+   em 1/4 da largura fazia o seletor nativo transbordar por cima do campo
+   vizinho no desktop. */
+.grid-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3)}
 
 /* ---------- Cabeçalho ---------- */
 .appbar{
@@ -169,6 +174,9 @@ input,select,textarea{
 textarea{padding:var(--sp-3);min-height:76px;resize:vertical;line-height:1.5}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--accent)}
+/* Campos de data têm interface nativa com largura mínima; sem isto eles
+   transbordam a coluna em grades estreitas. */
+input[type="date"],input[type="time"]{min-width:0;width:100%}
 .field{display:grid;gap:var(--sp-1)}
 .field > label{font-size:var(--fs-2);font-weight:var(--w-bold);color:var(--text-2)}
 .input-money{text-align:right;font-variant-numeric:tabular-nums}
@@ -317,7 +325,7 @@ input[type="checkbox"]{width:22px;height:22px;min-height:0;accent-color:var(--ac
   .sheet-backdrop{align-items:center}
   .sheet{max-width:560px;border-radius:var(--r-3);animation:none}
   .sheet-grip{display:none}
-  .grid-2{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .grid-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 
 /* ---------- Impressão (T-1.5) ---------- */

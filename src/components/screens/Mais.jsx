@@ -73,7 +73,7 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
 
         {dates.length > 0 && (
           <>
-            <div className="grid-2">
+            <div className="grid-metrics">
               <Metric label="Dias" value={dates.length} />
               <Metric label="Cidades" value={uniqueCities(state).length} />
               <Metric label="Total" value={money(t.total)} />

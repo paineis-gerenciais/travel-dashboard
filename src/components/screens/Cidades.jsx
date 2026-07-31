@@ -24,7 +24,7 @@ export default function Cidades() {
       <div className="container stack">
         <h2>Cidades</h2>
 
-        <div className="grid-2">
+        <div className="grid-metrics">
           <Metric label="Cidades" value={uniqueCities(state).length} />
           <Metric label="Diárias" value={nights} />
           <Metric label="Hospedagem" value={money(t.lodging)} />

@@ -12,9 +12,10 @@ import {
 } from '../../domain/transport.js';
 import { Row, Metric, EmptyState, Sheet, Field, StatusChip, isCancelled, useToast } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
-import PaymentFields from '../PaymentFields.jsx';
+import PaymentFields, { pct2 } from '../PaymentFields.jsx';
 import {
   splitSummary, settlements, participants, allCostRows, rowsForParticipant,
+  withSettlementStatus,
 } from '../../domain/split.js';
 import { track } from '../../lib/analytics.js';
 
@@ -61,7 +62,7 @@ export default function Custos() {
       <div className="container stack">
         <h2>Custos</h2>
 
-        <div className="grid-2">
+        <div className="grid-metrics">
           <Metric label="Total" value={money(t.total)} />
           <Metric label="Por pessoa" value={money(t.total / trav)} />
           <Metric label="Por dia" value={money(dates.length ? t.total / dates.length : 0)} />
@@ -251,7 +252,8 @@ function SplitSheet({ onClose }) {
   const [editandoLinha, setEditandoLinha] = useState(null); // {kind, id}
 
   const resumo = splitSummary(state);
-  const acertos = settlements(resumo);
+  const acertos = withSettlementStatus(state, settlements(resumo));
+  const pendentes = acertos.filter((a) => !a.confirmado).length;
 
   return (
     <Sheet title="Divisão de despesas" onClose={onClose}>
@@ -273,7 +275,7 @@ function SplitSheet({ onClose }) {
           )}
         </div>
 
-        <div className="grid-2">
+        <div className="grid-metrics">
           <Metric label="Total da viagem" value={money(resumo.total)} />
           <Metric label="Sem pagador" value={money(resumo.unassigned)} />
         </div>
@@ -318,15 +320,41 @@ function SplitSheet({ onClose }) {
           </p>
         )}
 
-        <h3 style={{ margin: 0 }}>Acerto</h3>
+        <div className="row-between">
+          <h3 style={{ margin: 0 }}>Acerto</h3>
+          {acertos.length > 0 && (
+            <span className="tiny t3">
+              {pendentes === 0 ? 'tudo acertado' : `${pendentes} pendente${pendentes > 1 ? 's' : ''}`}
+            </span>
+          )}
+        </div>
         {acertos.length === 0 ? (
           <p className="small t2" style={{ margin: 0 }}>Ninguém deve nada a ninguém.</p>
         ) : (
           <div className="card card-flush">
-            {acertos.map((a, i) => (
-              <Row key={i} icon="➡️" title={`${a.from} paga para ${a.to}`} value={<span className="num">{money(a.valor)}</span>} />
+            {acertos.map((a) => (
+              <Row
+                key={a.key}
+                icon={a.confirmado ? '✅' : '➡️'}
+                title={`${a.from} paga para ${a.to}`}
+                sub={a.confirmado ? 'Acerto confirmado' : 'Aguardando confirmação'}
+                value={<span className="num" style={{ color: a.confirmado ? 'var(--text-3)' : 'var(--text)' }}>{money(a.valor)}</span>}
+              >
+                <button
+                  className={a.confirmado ? 'btn-ghost btn-sm' : 'btn-sm'}
+                  aria-pressed={a.confirmado}
+                  onClick={() => actions.toggleSettlementDone(a.key, !a.confirmado)}
+                >
+                  {a.confirmado ? 'Desfazer' : '✓ Confirmar pagamento'}
+                </button>
+              </Row>
             ))}
           </div>
+        )}
+        {acertos.some((a) => a.confirmado) && (
+          <p className="tiny t3" style={{ margin: 0 }}>
+            Se novas despesas mudarem o valor devido, o acerto volta a aparecer como pendente.
+          </p>
         )}
 
         <div className="sheet-footer stack-2">
@@ -424,7 +452,7 @@ function ParticipantRows({ participantId, onEdit }) {
           icon={r.pagouEste ? '💳' : '•'}
           cancelled={isCancelled(r.item)}
           title={r.rotulo}
-          sub={`${r.detalhe ? r.detalhe + ' · ' : ''}${money(r.valor)} · ${r.pct.toFixed(0)}% dele = ${money(r.parte)}${r.pagouEste ? ' · pagou' : ''}`}
+          sub={`${r.detalhe ? r.detalhe + ' · ' : ''}${money(r.valor)} · ${pct2(r.pct)}% = ${money(r.parte)}${r.pagouEste ? ' · pagou' : ''}`}
           value={<button className="btn-ghost btn-sm" onClick={() => onEdit(r.kind, r.id)}>Editar</button>}
         />
       ))}

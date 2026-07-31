@@ -38,6 +38,7 @@ import { ensureGenerated, deleteCityCascade, cloneTripState } from '../generate.
 import {
   splitSummary, settlements, participants, participantName,
   allCostRows, effectiveSplit, rowsForParticipant,
+  settlementKey, withSettlementStatus,
 } from '../split.js';
 import { pendingReminders } from '../../lib/reminders.js';
 import { gmaps, getTransportCost, durationToMinutes, minutesToLabel } from '../transport.js';
@@ -628,7 +629,8 @@ describe('divisão de despesas', () => {
     const st = base();
     st.cities[0].nightly = 0; // só o museu de 100, pago pela Ana
     const acertos = settlements(splitSummary(st));
-    expect(acertos).toEqual([{ from: 'Bruno', to: 'Ana', valor: 50 }]);
+    expect(acertos).toHaveLength(1);
+    expect(acertos[0]).toMatchObject({ fromId: BRU, toId: ANA, from: 'Bruno', to: 'Ana', valor: 50 });
   });
 
   it('sem dívidas, não gera acerto', () => {
@@ -746,5 +748,27 @@ describe('allPlanningDates após ensureGenerated', () => {
       '2030-06-01', '2030-06-02', '2030-06-03', '2030-06-04',
     ]);
     expect(state.transports.length).toBe(0); // e sem nenhum transporte criado
+  });
+});
+
+
+/* ---------- Confirmação de acerto ---------- */
+describe('withSettlementStatus', () => {
+  const acerto = { fromId: 'p2', toId: 'p1', from: 'Bruno', to: 'Ana', valor: 50 };
+
+  it('acerto não confirmado aparece como pendente', () => {
+    const st = normalizeState({});
+    expect(withSettlementStatus(st, [acerto])[0].confirmado).toBe(false);
+  });
+
+  it('acerto confirmado aparece como confirmado', () => {
+    const st = normalizeState({ settings: { settlementsDone: [{ key: settlementKey(acerto) }] } });
+    expect(withSettlementStatus(st, [acerto])[0].confirmado).toBe(true);
+  });
+
+  it('se o valor da dívida muda, a confirmação antiga não vale mais', () => {
+    const st = normalizeState({ settings: { settlementsDone: [{ key: settlementKey(acerto) }] } });
+    const novo = { ...acerto, valor: 80 }; // surgiu uma despesa nova
+    expect(withSettlementStatus(st, [novo])[0].confirmado).toBe(false);
   });
 });

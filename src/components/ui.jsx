@@ -60,26 +60,36 @@ export function Row({ icon, title, sub, value, cancelled, children, onClick, hig
 export function Sheet({ title, onClose, children }) {
   const panelRef = useRef(null);
 
-  // Acessibilidade: Esc fecha e o foco fica preso dentro do sheet enquanto ele
-  // estiver aberto (sem o trap, quem usa teclado/leitor de tela "sai" do
-  // diálogo para o conteúdo inerte de trás).
+  // `onClose` costuma chegar como arrow inline (`onClose={() => setX(null)}`),
+  // ou seja, uma função NOVA a cada renderização. Guardá-la num ref permite que
+  // os efeitos abaixo tenham dependências vazias — sem isso, eles re-executavam
+  // a cada tecla digitada.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Foco inicial: SÓ na montagem.
+  //
+  // Este era o bug do "a cada caractere a seleção sai do campo": o efeito
+  // dependia de `onClose`, então re-executava a cada renderização — e cada
+  // tecla digitada renderiza. O `focus()` roubava o cursor do campo a cada
+  // letra. Antes disso, a mesma re-execução focava o botão ✕ (o primeiro
+  // focável), que era o sintoma anterior. Mesma causa, dois sintomas.
   useEffect(() => {
     const anterior = document.activeElement;
+    panelRef.current?.focus?.();
+    return () => anterior?.focus?.();
+  }, []);
+
+  // Esc fecha + foco preso dentro do diálogo (acessibilidade).
+  useEffect(() => {
     const el = panelRef.current;
     const focaveis = () =>
       Array.from(
         el?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') || []
       ).filter((n) => !n.disabled && n.offsetParent !== null);
 
-    // Foca o PRÓPRIO diálogo, não o primeiro controle. Antes focava o primeiro
-    // elemento focável, que na ordem do DOM é o botão ✕ do cabeçalho — o campo
-    // parecia "selecionar o X" ao abrir a edição, e um Enter distraído fechava
-    // a tela. Focar o contêiner também faz o leitor de tela anunciar o título
-    // do diálogo, em vez de ler um botão solto.
-    el?.focus?.();
-
     const onKey = (e) => {
-      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'Escape') { onCloseRef.current?.(); return; }
       if (e.key !== 'Tab') return;
       const lista = focaveis();
       if (lista.length === 0) return;
@@ -90,20 +100,12 @@ export function Sheet({ title, onClose, children }) {
     };
 
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      anterior?.focus?.();
-    };
-  }, [onClose]);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
-  // Altura visível real (teclado do celular abre e "come" a tela).
-  //
-  // Isto é feito por REF, escrevendo direto no style — de propósito. A versão
-  // anterior guardava a altura em estado do React e ouvia também o evento
-  // `scroll` do visualViewport: no celular, cada rolagem disparava um setState,
-  // que re-renderizava o sheet e fazia a rolagem SALTAR PARA O TOPO. Era o que
-  // acontecia na folha de divisão de despesas, que é longa. Sem estado, não há
-  // re-render; e só `resize` interessa, porque é o que muda com o teclado.
+  // Altura visível real (o teclado do celular "come" a tela). Escrito direto no
+  // elemento via ref, sem estado: guardar isso em estado do React fazia a
+  // rolagem saltar para o topo a cada evento do visual viewport.
   useEffect(() => {
     const vv = window.visualViewport;
     const el = panelRef.current;
@@ -115,7 +117,7 @@ export function Sheet({ title, onClose, children }) {
   }, []);
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop" onClick={() => onCloseRef.current?.()}>
       <div
         className="sheet"
         ref={panelRef}
@@ -126,7 +128,7 @@ export function Sheet({ title, onClose, children }) {
         <div className="sheet-grip" aria-hidden="true" />
         <div className="sheet-head">
           <h3>{title}</h3>
-          <button className="btn-ghost btn-sm" onClick={onClose} aria-label="Fechar">✕</button>
+          <button className="btn-ghost btn-sm" onClick={() => onCloseRef.current?.()} aria-label="Fechar">✕</button>
         </div>
         {children}
       </div>

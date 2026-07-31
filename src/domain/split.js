@@ -188,11 +188,39 @@ export function settlements(summary) {
   let j = 0;
   while (i < devedores.length && j < credores.length) {
     const valor = Math.min(devedores[i].valor, credores[j].valor);
-    if (valor > EPS) out.push({ from: devedores[i].name, to: credores[j].name, valor });
+    if (valor > EPS) {
+      out.push({
+        fromId: devedores[i].id,
+        toId: credores[j].id,
+        from: devedores[i].name,
+        to: credores[j].name,
+        valor,
+      });
+    }
     devedores[i].valor -= valor;
     credores[j].valor -= valor;
     if (devedores[i].valor <= EPS) i += 1;
     if (credores[j].valor <= EPS) j += 1;
   }
   return out;
+}
+
+
+/* ---------- Confirmação de acerto ---------- */
+
+/** Chave estável de um acerto: quem paga, para quem, e quanto (em centavos). */
+export function settlementKey(s) {
+  return `${s.fromId}>${s.toId}>${Math.round(s.valor * 100)}`;
+}
+
+/**
+ * Marca cada acerto como confirmado ou pendente.
+ *
+ * A confirmação guarda também o VALOR: se novas despesas mudarem o quanto uma
+ * pessoa deve, o acerto antigo deixa de valer e volta a aparecer como pendente,
+ * em vez de ficar marcado como resolvido escondendo uma dívida nova.
+ */
+export function withSettlementStatus(state, lista) {
+  const feitos = new Set((state.settings?.settlementsDone || []).map((x) => x.key));
+  return lista.map((s) => ({ ...s, key: settlementKey(s), confirmado: feitos.has(settlementKey(s)) }));
 }

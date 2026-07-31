@@ -198,6 +198,32 @@ export function TripProvider({ tripId, user, children }) {
           .map((p) => ({ id: p.id || uid(), name: String(p.name).trim() }));
       });
     },
+    /**
+     * Materializa os participantes "automáticos" (Viajante 1, Viajante 2…) como
+     * registros de verdade.
+     *
+     * Enquanto ninguém é cadastrado, a lista é gerada na hora a partir do
+     * número de viajantes — e esses ids não existem no banco. Se alguém
+     * escolhia "Viajante 1" como pagador, a referência era descartada no
+     * próximo carregamento e o campo voltava vazio. Chamar isto antes de
+     * atribuir um pagador resolve: os participantes passam a existir de fato,
+     * mantendo os mesmos ids já exibidos na tela.
+     */
+    ensureParticipants(lista) {
+      mutate((s) => {
+        if ((s.settings.participants || []).length > 0) return;
+        s.settings.participants = (lista || []).map((p) => ({ id: p.id, name: p.name }));
+      });
+    },
+    /** Confirma (ou desfaz a confirmação de) um acerto de contas. */
+    toggleSettlementDone(key, confirmado) {
+      mutate((s) => {
+        const atuais = (s.settings.settlementsDone || []).filter((x) => x.key !== key);
+        s.settings.settlementsDone = confirmado
+          ? [...atuais, { key, at: new Date().toISOString() }]
+          : atuais;
+      });
+    },
     addParticipant(name) {
       mutate((s) => {
         const nome = String(name || '').trim();

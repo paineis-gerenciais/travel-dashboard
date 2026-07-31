@@ -48,9 +48,12 @@ export function blankState() {
       subtitle: SUBTITLES[0],
       currentVersionId: null,
       costView: 'categoria',
-      // T-1.7: nomes dos participantes da divisão de despesas. Vazio = usa
-      // rótulos genéricos derivados de `travelers`.
+      // Participantes da divisão de despesas: [{ id, name }].
+      // Vazio = usa rótulos genéricos derivados de `travelers`.
       participants: [],
+      // Acertos já confirmados: [{ key, at }]. A chave inclui o valor, então um
+      // acerto confirmado volta a ficar pendente se a dívida mudar.
+      settlementsDone: [],
     },
   };
 }
