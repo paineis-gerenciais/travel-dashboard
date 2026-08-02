@@ -356,6 +356,10 @@ input[type="date"],input[type="time"]{min-width:0;width:100%}
   .print-muted{color:#666}
   .print-total{border-top:1px solid #999;padding-top:1.5mm;margin-top:2mm}
   .print-day{break-inside:avoid}
+  /* Endereços dos comprovantes: menores e em cinza, para não competir com o
+     conteúdo do roteiro. Em papel não são clicáveis, mas são conferíveis; num
+     PDF em tela, o leitor costuma torná-los clicáveis. */
+  .print-link{font-size:9pt;color:#555;word-break:break-all}
 }
 
 /* ============================================================
@@ -456,3 +460,16 @@ input[type="date"],input[type="time"]{min-width:0;width:100%}
   animation:row-pulse 1.2s ease 2;
 }
 @keyframes row-pulse{0%,100%{background:var(--accent-soft)}50%{background:transparent}}
+
+/* ---------- Frase da viagem (primeiro bloco do conteúdo rolável) ---------- */
+.trip-quote{
+  margin:0;
+  padding:var(--sp-3) var(--sp-4);
+  border-left:3px solid var(--accent);
+  border-radius:0 var(--r-1) var(--r-1) 0;
+  background:var(--accent-soft);
+  color:var(--text-2);
+  font-size:var(--fs-2);
+  font-style:italic;
+  line-height:1.45;
+}

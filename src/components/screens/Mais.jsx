@@ -9,6 +9,8 @@ import { logError } from '../../lib/logger.js';
 import { Row, Sheet, Metric, EmptyState, StatusChip, CHECKLIST_STATUS, SearchField, useToast } from '../ui.jsx';
 import { appUrl, whatsappUrl, nativeShare, copyToClipboard } from '../../lib/invite.js';
 import { track } from '../../lib/analytics.js';
+import { countLinks, hasLink } from '../../domain/links.js';
+import LinkField from '../LinkField.jsx';
 import { sendFeedback } from '../../lib/tripData.js';
 import {
   remindersEnabled, setRemindersEnabled, notificationsSupported,
@@ -23,7 +25,7 @@ import ActivityFeed from '../ActivityFeed.jsx';
  * MAIS — resumo da viagem, checklist e todas as ações que antes viviam num menu
  * de 16 botões. Tudo alcançável em no máximo 2 toques. (Fase R2.)
  */
-export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
+export default function Mais({ user, tripId, theme, toggleTheme, onLogout, onOpenAttachments }) {
   const { state, actions } = useTrip();
   const { activeTripId, trips, actions: tripsActions } = useTrips();
   const [sheet, setSheet] = useState(null);
@@ -93,6 +95,8 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
         <div className="card card-flush">
           <Row icon="✅" title="Checklist" sub={`${cs.done} de ${cs.total} concluídos`}
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('checklist')}>Abrir →</button>} />
+          <Row icon="📎" title="Anexos" sub={`${countLinks(state)} comprovante(s) e documento(s)`}
+            value={<button className="btn-ghost btn-sm" onClick={onOpenAttachments}>Abrir →</button>} />
           <Row icon="🤝" title="Compartilhar" sub="Convidar pessoas para a viagem"
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('share')}>Abrir →</button>} />
           <Row icon="🗂️" title="Versões salvas" sub="Guardar ou voltar a um ponto anterior"
@@ -176,6 +180,7 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout }) {
 function ChecklistSheet({ onClose }) {
   const { state, actions } = useTrip();
   const [item, setItem] = useState('');
+  const [linkChecklist, setLinkChecklist] = useState(null);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const cs = checklistStats(state);
@@ -211,6 +216,23 @@ function ChecklistSheet({ onClose }) {
           </div>
         )}
 
+        {linkChecklist != null && state.checklist[linkChecklist] && (
+          <Sheet title="Anexar link" onClose={() => setLinkChecklist(null)}>
+            <div className="stack">
+              <p className="small t2" style={{ margin: 0 }}>
+                {state.checklist[linkChecklist].item || 'Item do checklist'}
+              </p>
+              <LinkField
+                link={state.checklist[linkChecklist].link}
+                onChange={(key, value) => actions.updateItem('checklist', linkChecklist, key, value)}
+              />
+              <div className="sheet-footer stack-2">
+                <button className="btn-primary btn-block" onClick={() => setLinkChecklist(null)}>Concluir</button>
+              </div>
+            </div>
+          </Sheet>
+        )}
+
         {state.checklist.length === 0 ? (
           <EmptyState
             title="Checklist vazio"
@@ -239,6 +261,9 @@ function ChecklistSheet({ onClose }) {
                   />
                   <div className="row-actions">
                     <StatusChip value={c.status} options={CHECKLIST_STATUS} onChange={(v) => actions.updateItem('checklist', i, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setLinkChecklist(i)}>
+                      {hasLink(c) ? '📎 Link' : 'Anexar link'}
+                    </button>
                     <button className="btn-ghost btn-sm" onClick={() => actions.deleteItem('checklist', i)}>Excluir</button>
                   </div>
                 </div>

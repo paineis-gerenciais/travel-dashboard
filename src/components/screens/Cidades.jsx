@@ -6,6 +6,7 @@ import { totals } from '../../domain/costs.js';
 import { Row, StatusChip, Sheet, EmptyState, Banner, Metric, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 import PaymentFields from '../PaymentFields.jsx';
+import LinkField from '../LinkField.jsx';
 import { daysBetween as diasEntre } from '../../domain/dates.js';
 
 /** CIDADES — o esqueleto da viagem. Reconstruída sem tabela (Fase R3). */
@@ -177,6 +178,8 @@ function CitySheet({ index, onClose, onDelete }) {
           <span>Status</span>
           <div><StatusChip value={c.status} onChange={(v) => actions.setCityField(index, 'status', v)} /></div>
         </div>
+
+        <LinkField link={c.link} onChange={(key, value) => actions.setCityField(index, key, value)} />
 
         <Field label="Notas">
           <textarea value={c.notes || ''} onChange={(e) => actions.setCityField(index, 'notes', e.target.value)} />

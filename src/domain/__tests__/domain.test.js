@@ -5,6 +5,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { num, money, fmtDate } from '../format.js';
+import { isValidLink, normalizeLinkInput, linkLabel, collectLinks, countLinks } from '../links.js';
+import { quoteForTrip } from '../../lib/quotes.js';
 import { blankState, normalizeState } from '../state.js';
 import {
   daysBetween,
@@ -842,5 +844,72 @@ describe('rateio entre 3 pessoas (caso das imagens)', () => {
     const r = splitSummary(st);
     const soma = r.rows.reduce((acc, x) => acc + x.owed, 0);
     expect(soma).toBeCloseTo(r.total, 6);
+  });
+});
+
+
+/* ---------- Caminho A: anexos como links externos ---------- */
+describe('links externos', () => {
+  it('aceita só https', () => {
+    expect(isValidLink('https://drive.google.com/x')).toBe(true);
+    expect(isValidLink('http://drive.google.com/x')).toBe(false);
+    expect(isValidLink('drive.google.com/x')).toBe(false);
+    expect(isValidLink('')).toBe(false);
+    expect(isValidLink(null)).toBe(false);
+  });
+
+  it('normaliza o que foi colado, sem rebaixar para http', () => {
+    expect(normalizeLinkInput('drive.google.com/x')).toBe('https://drive.google.com/x');
+    expect(normalizeLinkInput('http://drive.google.com/x')).toBe('https://drive.google.com/x');
+    expect(normalizeLinkInput('https://a.com')).toBe('https://a.com');
+    expect(normalizeLinkInput('  ')).toBe('');
+  });
+
+  it('usa o domínio como rótulo quando não há um', () => {
+    expect(linkLabel({ url: 'https://www.drive.google.com/x' })).toBe('drive.google.com');
+    expect(linkLabel({ url: 'https://a.com', label: 'Voucher' })).toBe('Voucher');
+  });
+
+  it('coleta anexos de todas as origens, com documentos gerais no topo', () => {
+    const st = normalizeState({
+      settings: { documents: [{ id: 'd1', label: 'Seguro', url: 'https://a.com/seguro' }] },
+      cities: [{ id: 'c1', city: 'Lisboa', start: '2026-06-01', end: '2026-06-03', link: { url: 'https://a.com/hotel', label: 'Voucher' } }],
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', link: { url: 'https://a.com/ingresso' } }],
+      transports: [{ id: 't1', date: '2026-06-01', mode: 'Voo' }], // sem link
+    });
+    const links = collectLinks(st);
+    expect(links.length).toBe(3);
+    expect(links[0].kind).toBe('documents');       // documento geral primeiro
+    expect(links[1].origem).toBe('Lisboa');        // depois por data
+    expect(links[2].origem).toBe('Museu');
+  });
+
+  it('ignora links inválidos na coleta', () => {
+    const st = normalizeState({
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'X', link: { url: 'não é link' } }],
+    });
+    expect(collectLinks(st).length).toBe(0);
+  });
+
+  it('conta os anexos da viagem', () => {
+    const st = normalizeState({
+      checklist: [{ id: 'k1', item: 'Visto', link: { url: 'https://a.com/visto' } }],
+    });
+    expect(countLinks(st)).toBe(1);
+  });
+});
+
+/* ---------- Frase estável por viagem ---------- */
+describe('quoteForTrip', () => {
+  it('a mesma viagem sempre recebe a mesma frase', () => {
+    expect(quoteForTrip('trip-abc')).toBe(quoteForTrip('trip-abc'));
+  });
+  it('viagens diferentes tendem a receber frases diferentes', () => {
+    const amostra = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map(quoteForTrip));
+    expect(amostra.size).toBeGreaterThan(1);
+  });
+  it('sem id, devolve uma frase válida em vez de quebrar', () => {
+    expect(typeof quoteForTrip('')).toBe('string');
+    expect(quoteForTrip(undefined).length).toBeGreaterThan(0);
   });
 });
