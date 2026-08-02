@@ -224,6 +224,27 @@ export function TripProvider({ tripId, user, children }) {
           : atuais;
       });
     },
+    /* ---------- Documentos gerais da viagem (links) ---------- */
+    addDocument(label, url) {
+      mutate((s) => {
+        if (!url) return;
+        s.settings.documents = [
+          ...(s.settings.documents || []),
+          { id: uid(), label: String(label || '').trim(), url },
+        ];
+      });
+    },
+    setDocumentField(id, key, value) {
+      mutate((s) => {
+        const d = (s.settings.documents || []).find((x) => x.id === id);
+        if (d) d[key] = value;
+      });
+    },
+    removeDocument(id) {
+      mutate((s) => {
+        s.settings.documents = (s.settings.documents || []).filter((x) => x.id !== id);
+      });
+    },
     addParticipant(name) {
       mutate((s) => {
         const nome = String(name || '').trim();

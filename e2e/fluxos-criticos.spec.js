@@ -140,6 +140,45 @@ test.describe('fluxos críticos', () => {
     await expect(dialogo.getByRole('button', { name: /ocultar gastos/i })).toBeVisible();
   });
 
+  test('anexa link a um item e ele aparece na central de anexos', async ({ page }) => {
+    await criarViagem(page, 'Viagem Anexos');
+    await cadastrarCidade(page, { cidade: 'Bogotá', checkin: '2030-10-01', checkout: '2030-10-03' });
+
+    await page.getByRole('button', { name: 'Dias' }).click();
+    await page.getByRole('button', { name: '+ Atração' }).click();
+
+    const editor = page.getByRole('dialog', { name: 'Editar atração' });
+    await editor.getByLabel('Atração').fill('Museu do Ouro');
+    await editor.getByLabel('Link do comprovante').fill('https://exemplo.com/ingresso');
+    await editor.getByLabel('Como chamar este documento').fill('Ingresso');
+    await editor.getByRole('button', { name: 'Concluir' }).click();
+
+    // o clipe aparece na linha do item
+    await expect(page.getByRole('link', { name: /abrir ingresso/i })).toBeVisible();
+
+    // e o anexo aparece na central
+    await page.getByRole('button', { name: /^anexos/i }).click();
+    const central = page.getByRole('dialog', { name: 'Anexos' });
+    await expect(central.getByText('Ingresso')).toBeVisible();
+    await expect(central.getByText('Museu do Ouro')).toBeVisible();
+  });
+
+  test('a frase da viagem aparece na tela Dias e é estável', async ({ page }) => {
+    await criarViagem(page, 'Viagem Frase');
+    await cadastrarCidade(page, { cidade: 'Quito', checkin: '2030-11-01', checkout: '2030-11-03' });
+
+    await page.getByRole('button', { name: 'Dias' }).click();
+    const frase = page.locator('.trip-quote');
+    await expect(frase).toBeVisible();
+    const texto = await frase.textContent();
+    expect(texto.trim().length).toBeGreaterThan(0);
+
+    // sair e voltar mantém a MESMA frase (é derivada do id da viagem)
+    await page.getByRole('button', { name: 'Custos' }).click();
+    await page.getByRole('button', { name: 'Dias' }).click();
+    await expect(page.locator('.trip-quote')).toHaveText(texto);
+  });
+
   test('compartilhar abre a folha de convite', async ({ page }) => {
     await criarViagem(page, 'Viagem Share');
     await page.getByRole('button', { name: 'Mais' }).click();

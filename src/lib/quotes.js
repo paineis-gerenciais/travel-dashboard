@@ -21,3 +21,20 @@ const QUOTES = [
 export function randomQuote() {
   return QUOTES[Math.floor(Math.random() * QUOTES.length)];
 }
+
+/**
+ * Frase ESTÁVEL de uma viagem: derivada do próprio id, então aquela viagem
+ * sempre mostra a mesma frase. Preferida à frase sorteada por sessão porque
+ * evita o efeito "roleta" — o elemento parece intencional, e não aleatório.
+ * Mesmo padrão de `cityColorIndex`, que deriva cor estável do nome da cidade.
+ */
+export function quoteForTrip(tripId) {
+  const s = String(tripId || '');
+  if (!s) return QUOTES[0];
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
+  return QUOTES[h % QUOTES.length];
+}
+
+/** Quantidade de frases disponíveis (usado em teste). */
+export const QUOTES_COUNT = QUOTES.length;

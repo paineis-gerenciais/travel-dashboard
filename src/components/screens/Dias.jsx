@@ -8,6 +8,9 @@ import {
 } from '../../domain/transport.js';
 import { activeCost } from '../../domain/costs.js';
 import PaymentFields from '../PaymentFields.jsx';
+import LinkField from '../LinkField.jsx';
+import { hasLink } from '../../domain/links.js';
+import { quoteForTrip } from '../../lib/quotes.js';
 import { Row, StatusChip, Sheet, EmptyState, Banner, Stepper, Field, isCancelled } from '../ui.jsx';
 import MoneyInput from '../MoneyInput.jsx';
 import DurationInput from '../DurationInput.jsx';
@@ -200,6 +203,7 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
   return (
     <div className="screen">
       <div className="container stack">
+        <TripQuote tripId={tripId} />
         <Timeline dates={dates} activeIndex={i} onSelect={jumpTo} />
 
         <div
@@ -236,7 +240,9 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                 title={hosting.hotel || hosting.city}
                 sub={hosting.breakfastIncluded ? `${hosting.city} · café da manhã incluso` : hosting.city}
                 value={<button className="btn-ghost btn-sm" onClick={() => onNavigate('cidades')}>Editar</button>}
-              />
+              >
+                <LinkChip item={hosting} />
+              </Row>
             </div>
           )}
 
@@ -263,6 +269,7 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                   >
                     <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', r, 'status', v)} />
                     <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'transports', index: r })}>Editar</button>
+                    <LinkChip item={x} />
                     <CommentThread tripId={tripId} itemKey={`transports:${x.id}`} />
                   </Row>
                 );
@@ -282,6 +289,7 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                   >
                     <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', r, 'status', v)} />
                     <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'foodItems', index: r })}>Editar</button>
+                    <LinkChip item={x} />
                     <CommentThread tripId={tripId} itemKey={`foodItems:${x.id}`} />
                   </Row>
                 );
@@ -299,6 +307,7 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                   >
                     <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', r, 'status', v)} />
                     <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'attractions', index: r })}>Editar</button>
+                    <LinkChip item={x} />
                     <CommentThread tripId={tripId} itemKey={`attractions:${x.id}`} />
                   </Row>
                 );
@@ -315,6 +324,7 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                 >
                   <StatusChip value={x.status} onChange={(v) => actions.updateItem('otherExpenses', r, 'status', v)} />
                   <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'otherExpenses', index: r })}>Editar</button>
+                  <LinkChip item={x} />
                 </Row>
               );
             })}
@@ -443,6 +453,8 @@ function ItemSheet({ kind, index, onClose }) {
         {/* Pagamento e rateio — alimentam a divisão de despesas em Custos */}
         <PaymentFields item={item} valor={num(item.cost)} onChange={set} />
 
+        <LinkField link={item.link} onChange={set} />
+
         <div className="field">
           <span>Status</span>
           <div><StatusChip value={item.status} onChange={(v) => set('status', v)} /></div>
@@ -454,5 +466,45 @@ function ItemSheet({ kind, index, onClose }) {
         </div>
       </div>
     </Sheet>
+  );
+}
+
+/**
+ * Clipe de anexo: atalho para abrir o comprovante sem passar pelo editor.
+ * Só aparece quando existe link válido.
+ */
+function LinkChip({ item }) {
+  if (!hasLink(item)) return null;
+  return (
+    <a
+      className="btn-ghost btn-sm"
+      href={item.link.url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Abrir ${item.link.label || 'comprovante'}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      📎
+    </a>
+  );
+}
+
+/**
+ * Frase da viagem — primeiro bloco do conteúdo ROLÁVEL, nunca do cabeçalho.
+ *
+ * A faixa fixa existe para orientar ("onde estou, que viagem é esta") e sua
+ * linha secundária carrega o indicador "Salvo / Salvando…", que é retorno em
+ * tempo real sobre integridade de dados. Espremer uma frase ali, ou alternar
+ * com aquele indicador, trocaria segurança por enfeite. Aqui a frase respira,
+ * aparece ao abrir a viagem e sai de cena ao rolar — sem custar um pixel de
+ * altura permanente ao `<main>`.
+ *
+ * A frase é estável por viagem (derivada do id): aquela viagem tem "aquela"
+ * frase, em vez de sortear a cada abertura.
+ */
+function TripQuote({ tripId }) {
+  if (!tripId) return null;
+  return (
+    <p className="trip-quote no-print">{quoteForTrip(tripId)}</p>
   );
 }

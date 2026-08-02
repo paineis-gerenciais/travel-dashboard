@@ -54,6 +54,9 @@ export function blankState() {
       // Acertos já confirmados: [{ key, at }]. A chave inclui o valor, então um
       // acerto confirmado volta a ficar pendente se a dívida mudar.
       settlementsDone: [],
+      // Documentos gerais da viagem (links): [{ id, label, url }].
+      // Não pertencem a nenhum dia — seguro-viagem, passaporte, apólice.
+      documents: [],
     },
   };
 }

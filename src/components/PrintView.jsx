@@ -2,6 +2,7 @@ import { useTrip } from '../store/TripProvider.jsx';
 import { money, fmtDate, num } from '../domain/format.js';
 import { allPlanningDates, tripDayFlow, itemTimeMinutes, uniqueCities, HOME } from '../domain/dates.js';
 import { totals, dayTotal, activeCost } from '../domain/costs.js';
+import { collectLinks, hasLink, linkLabel } from '../domain/links.js';
 import {
   getTransportDate, getTransportOrigin, getTransportDest, getTransportMode,
   getTransportDurationMinutes, minutesToLabel,
@@ -71,6 +72,7 @@ export default function PrintView({ tripName }) {
               {c.start && c.end ? ` · ${fmtDate(c.start)} a ${fmtDate(c.end)}` : ''}
               {c.breakfastIncluded ? ' · café da manhã incluso' : ''}
               {c.status ? ` · ${c.status}` : ''}
+              {hasLink(c) && <span className="print-link"> · {linkLabel(c.link)}: {c.link.url}</span>}
             </p>
           ))}
         </section>
@@ -97,6 +99,9 @@ export default function PrintView({ tripName }) {
                     {detalhe ? ` — ${detalhe}` : ''}
                     {activeCost(item) > 0 ? ` · ${money(activeCost(item))}` : ''}
                     {item.status ? ` · ${item.status}` : ''}
+                    {hasLink(item) && (
+                      <span className="print-link"> · {linkLabel(item.link)}: {item.link.url}</span>
+                    )}
                   </p>
                 );
               })
@@ -116,6 +121,19 @@ export default function PrintView({ tripName }) {
           <b>Total · {money(t.total)}</b> · por pessoa {money(t.total / trav)}
         </p>
       </section>
+
+      {collectLinks(state).length > 0 && (
+        <section className="print-block">
+          <h2>Comprovantes e documentos</h2>
+          {collectLinks(state).map((l) => (
+            <p key={`${l.kind}:${l.id}`} className="print-line">
+              <b>{l.label}</b> — {l.origem}
+              {l.date ? ` · ${fmtDate(l.date)}` : ''}
+              <span className="print-link"> · {l.url}</span>
+            </p>
+          ))}
+        </section>
+      )}
 
       {state.checklist.length > 0 && (
         <section className="print-block">

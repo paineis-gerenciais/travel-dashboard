@@ -5,6 +5,8 @@ import PresenceBar from './PresenceBar.jsx';
 import { track } from '../lib/analytics.js';
 import PrintView from './PrintView.jsx';
 import MessagesSheet from './MessagesSheet.jsx';
+import AttachmentsSheet from './AttachmentsSheet.jsx';
+import { countLinks } from '../domain/links.js';
 import { pendingReminders, fireReminders } from '../lib/reminders.js';
 import { todayISO } from '../domain/dates.js';
 
@@ -58,6 +60,7 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
   // qualquer recurso futuro que precise "abrir o item X" reusa isto.
   const [target, setTarget] = useState(null);
   const [showMessages, setShowMessages] = useState(false);
+  const [showAnexos, setShowAnexos] = useState(false);
 
   const goToItem = (itemKey, date) => {
     setTarget({ itemKey, date, at: Date.now() });
@@ -81,6 +84,13 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
             <PresenceBar />
+            <button
+              className="btn-ghost btn-sm btn-icon"
+              aria-label={`Anexos${countLinks(state) ? ` (${countLinks(state)})` : ''}`}
+              onClick={() => { setShowAnexos(true); track('attachments_opened'); }}
+            >
+              📎
+            </button>
             <button
               className="btn-ghost btn-sm btn-icon"
               aria-label="Mensagens"
@@ -117,9 +127,14 @@ export default function App({ user, onLogout, theme, toggleTheme }) {
             onLogout={onLogout}
             target={target}
             onTargetHandled={() => setTarget(null)}
+            onOpenAttachments={() => { setShowAnexos(true); track('attachments_opened'); }}
           />
         </Suspense>
       </main>
+
+      {showAnexos && (
+        <AttachmentsSheet onClose={() => setShowAnexos(false)} onGoToItem={goToItem} />
+      )}
 
       {showMessages && (
         <MessagesSheet
