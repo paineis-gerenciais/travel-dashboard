@@ -11,6 +11,7 @@ import { appUrl, whatsappUrl, nativeShare, copyToClipboard } from '../../lib/inv
 import { track } from '../../lib/analytics.js';
 import { countLinks, hasLink } from '../../domain/links.js';
 import LinkField from '../LinkField.jsx';
+import SheetImportSheet from '../SheetImportSheet.jsx';
 import { sendFeedback } from '../../lib/tripData.js';
 import {
   remindersEnabled, setRemindersEnabled, notificationsSupported,
@@ -94,13 +95,13 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout, onOpe
 
         <div className="card card-flush">
           <Row icon="✅" title="Checklist" sub={`${cs.done} de ${cs.total} concluídos`}
-            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('checklist')}>Abrir →</button>} />
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('checklist')} aria-label="Abrir Checklist">Abrir →</button>} />
           <Row icon="📎" title="Anexos" sub={`${countLinks(state)} comprovante(s) e documento(s)`}
-            value={<button className="btn-ghost btn-sm" onClick={onOpenAttachments}>Abrir →</button>} />
+            value={<button className="btn-ghost btn-sm" onClick={onOpenAttachments} aria-label="Abrir Anexos">Abrir →</button>} />
           <Row icon="🤝" title="Compartilhar" sub="Convidar pessoas para a viagem"
-            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('share')}>Abrir →</button>} />
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('share')} aria-label="Abrir Compartilhar">Abrir →</button>} />
           <Row icon="🗂️" title="Versões salvas" sub="Guardar ou voltar a um ponto anterior"
-            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('versions')}>Abrir →</button>} />
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('versions')} aria-label="Abrir Versões salvas">Abrir →</button>} />
           <Row icon="🔗" title="Enviar link do app" sub="Sem convite: só o endereço, por WhatsApp ou cópia"
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('applink')}>Enviar →</button>} />
         </div>
@@ -112,14 +113,16 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout, onOpe
             value={<button className="btn-ghost btn-sm" onClick={toggleTheme}>Alternar</button>} />
           <Row icon="📄" title="Exportar PDF do roteiro" sub="Versão organizada para mandar no grupo ou imprimir"
             value={<button className="btn-ghost btn-sm" onClick={() => setSheet('pdf')}>Gerar →</button>} />
-          <Row icon="⬇️" title="Exportar JSON" sub="Baixar os dados desta viagem"
+          <Row icon="📊" title="Planilha" sub="Modelo, exportar, importar e colar da planilha"
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('planilha')} aria-label="Abrir Planilha">Abrir →</button>} />
+          <Row icon="⬇️" title="Exportar JSON" sub="Baixar os dados desta viagem (cópia de segurança)"
             value={<button className="btn-ghost btn-sm" onClick={exportJSON}>Exportar</button>} />
           <Row icon="⬆️" title="Importar JSON" sub="Substituir o conteúdo por um arquivo"
             value={<button className="btn-ghost btn-sm" onClick={() => fileRef.current.click()}>Importar</button>} />
           <Row icon="🩺" title="Diagnóstico" sub="Erros registrados nesta sessão"
-            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('diag')}>Abrir →</button>} />
+            value={<button className="btn-ghost btn-sm" onClick={() => setSheet('diag')} aria-label="Abrir Diagnóstico">Abrir →</button>} />
           <Row icon="💡" title="Enviar feedback" sub="Reportar um problema ou sugerir algo"
-            value={<button className="btn-ghost btn-sm" onClick={() => { setSheet('feedback'); track('feedback_opened'); }}>Abrir →</button>} />
+            value={<button className="btn-ghost btn-sm" onClick={() => { setSheet('feedback'); track('feedback_opened'); }} aria-label="Abrir Enviar feedback">Abrir →</button>} />
         </div>
 
         <div className="card card-flush">
@@ -157,6 +160,7 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout, onOpe
       )}
       {sheet === 'applink' && <AppLinkSheet onClose={() => setSheet(null)} />}
       {sheet === 'feedback' && <FeedbackSheet user={user} onClose={() => setSheet(null)} />}
+      {sheet === 'planilha' && <SheetImportSheet onClose={() => setSheet(null)} />}
       {sheet === 'duplicate' && <DuplicateSheet onClose={() => setSheet(null)} />}
       {sheet === 'pdf' && <PdfSheet onClose={() => setSheet(null)} />}
       {sheet === 'clear' && (

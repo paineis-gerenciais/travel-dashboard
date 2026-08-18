@@ -50,7 +50,7 @@ export default function PrintView({ tripName }) {
   };
 
   return (
-    <div className="print-only print-doc">
+    <div className="print-only print-doc" aria-hidden="true" data-testid="print-view">
       <header className="print-cover">
         <h1>{tripName || state.settings.title || 'Viagem'}</h1>
         {dates.length > 0 && (
