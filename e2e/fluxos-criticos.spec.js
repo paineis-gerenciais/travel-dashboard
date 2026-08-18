@@ -179,6 +179,61 @@ test.describe('fluxos críticos', () => {
     await expect(page.locator('.trip-quote')).toHaveText(texto);
   });
 
+  test('importa itens colando da planilha, com prévia antes de aplicar', async ({ page }) => {
+    await criarViagem(page, 'Viagem Planilha');
+    await cadastrarCidade(page, { cidade: 'Lima', checkin: '2030-12-01', checkout: '2030-12-04' });
+
+    await page.getByRole('button', { name: 'Mais' }).click();
+    // rótulo específico, não posição: 7 botões da tela Mais se chamam "Abrir →"
+    // visualmente, e um índice (.nth) quebra silenciosamente a cada linha nova
+    // adicionada antes dele — foi o que aconteceu aqui (apontava para "Versões
+    // salvas" depois que "Anexos" ganhou uma linha própria).
+    await page.getByRole('button', { name: 'Abrir Planilha' }).click();
+
+    const folha = page.getByRole('dialog', { name: 'Planilha' });
+    await expect(folha).toBeVisible();
+    await folha.getByRole('button', { name: 'Colar' }).click();
+
+    await folha.getByLabel('Qual tipo de informação?').selectOption('attractions');
+    await folha.getByLabel('Cole aqui').fill(
+      'id\tdata\thora\tnome\tcusto\tstatus\tlink\n' +
+      '\t2030-12-02\t10:00\tMachu Picchu\t300\tReservado\t\n' +
+      '\t01/12/2030\t\tLinha ruim\t\t\t\n'
+    );
+    await folha.getByRole('button', { name: 'Conferir' }).click();
+
+    // a prévia mostra o que será feito E o erro, sem aplicar nada ainda
+    await expect(folha.getByText(/1 a criar/)).toBeVisible();
+    await expect(folha.getByText(/linha 3/)).toBeVisible();
+    await expect(folha.getByText(/AAAA-MM-DD/)).toBeVisible();
+
+    await folha.getByRole('button', { name: 'Aplicar à viagem' }).click();
+
+    // o item válido entrou; o inválido não
+    await page.getByRole('button', { name: 'Dias' }).click();
+
+    // A tela Dias mostra UM dia por vez. Como a viagem é inteiramente futura,
+    // ela abre no primeiro dia (check-in, 01/12) — não no dia da atração
+    // importada (02/12). Sem avançar, a única ocorrência de "Machu Picchu" no
+    // DOM vem do PrintView (que existe sempre, oculto por CSS para a
+    // impressão), e o Playwright corretamente reporta "hidden". Avança um dia
+    // para chegar onde o item de fato está.
+    await page.getByRole('button', { name: /próximo/i }).click();
+
+    // O PrintView monta a viagem inteira o tempo todo (oculto por CSS até a
+    // impressão), então QUALQUER texto de item também existe ali — sem
+    // escopo, getByText encontra as duas ocorrências e o modo estrito do
+    // Playwright recusa a ambiguidade. Escopar ao <main> exclui essa cópia
+    // oculta. (Mesmo padrão já visto no teste de Custos, com "Hospedagem".)
+    const tela = page.getByRole('main');
+    await expect(tela.getByText('Machu Picchu')).toBeVisible();
+
+    // "Linha ruim" precisa estar ausente em QUALQUER lugar — inclusive no
+    // PrintView — porque ela nunca deveria ter sido criada. Aqui, ao
+    // contrário, NÃO escopamos: é uma checagem de ausência total.
+    await expect(page.getByText('Linha ruim')).toHaveCount(0);
+  });
+
   test('compartilhar abre a folha de convite', async ({ page }) => {
     await criarViagem(page, 'Viagem Share');
     await page.getByRole('button', { name: 'Mais' }).click();

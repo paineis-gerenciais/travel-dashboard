@@ -7,6 +7,9 @@ import { describe, it, expect } from 'vitest';
 import { num, money, fmtDate } from '../format.js';
 import { isValidLink, normalizeLinkInput, linkLabel, collectLinks, countLinks } from '../links.js';
 import { quoteForTrip } from '../../lib/quotes.js';
+import {
+  ESQUEMA, kindPorAba, parseDataCelula, validarAba, mesclarPlanilha, linhasDe, planilhaDe,
+} from '../sheet.js';
 import { blankState, normalizeState } from '../state.js';
 import {
   daysBetween,
@@ -911,5 +914,148 @@ describe('quoteForTrip', () => {
   it('sem id, devolve uma frase válida em vez de quebrar', () => {
     expect(typeof quoteForTrip('')).toBe('string');
     expect(quoteForTrip(undefined).length).toBeGreaterThan(0);
+  });
+});
+
+
+/* ---------- Planilha: validação e mesclagem ---------- */
+describe('planilha — leitura de células', () => {
+  it('aceita AAAA-MM-DD', () => {
+    expect(parseDataCelula('2026-06-01')).toEqual({ ok: true, valor: '2026-06-01' });
+  });
+
+  it('RECUSA data ambígua em vez de adivinhar', () => {
+    // 03/04/2026 é 3 de abril ou 4 de março, conforme o idioma do Excel.
+    const r = parseDataCelula('03/04/2026');
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/AAAA-MM-DD/);
+  });
+
+  it('converte número de série do Excel', () => {
+    // 45809 = 2025-06-01 na contagem do Excel
+    const r = parseDataCelula(45809);
+    expect(r.ok).toBe(true);
+    expect(r.valor).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('aceita objeto Date', () => {
+    const r = parseDataCelula(new Date('2026-06-01T12:00:00'));
+    expect(r.ok).toBe(true);
+    expect(r.valor).toBe('2026-06-01');
+  });
+
+  it('vazio é vazio, não erro', () => {
+    expect(parseDataCelula('')).toEqual({ ok: true, valor: '' });
+  });
+});
+
+describe('planilha — validação de aba', () => {
+  const head = ESQUEMA.attractions.colunas.map((c) => c.col);
+
+  it('lê linhas válidas', () => {
+    const m = [head, ['', '2026-06-02', '09:00', 'Museu', '50', 'Reservado', '']];
+    const { itens, erros } = validarAba('attractions', m);
+    expect(erros).toEqual([]);
+    expect(itens[0]).toMatchObject({ date: '2026-06-02', name: 'Museu', cost: 50, status: 'Reservado' });
+  });
+
+  it('aponta a linha e a coluna do erro', () => {
+    const m = [head, ['', '01/06/2026', '', 'Museu', '', '', '']];
+    const { erros } = validarAba('attractions', m);
+    expect(erros[0]).toMatchObject({ linha: 2, coluna: 'data' });
+  });
+
+  it('exige campos obrigatórios', () => {
+    const m = [head, ['', '2026-06-02', '', '', '', '', '']];
+    const { erros } = validarAba('attractions', m);
+    expect(erros.some((e) => e.coluna === 'nome' && e.mensagem === 'obrigatório')).toBe(true);
+  });
+
+  it('recusa status inválido, listando os válidos', () => {
+    const m = [head, ['', '2026-06-02', '', 'Museu', '', 'Talvez', '']];
+    const { erros } = validarAba('attractions', m);
+    expect(erros[0].mensagem).toMatch(/Planejado/);
+  });
+
+  it('ignora linhas totalmente vazias', () => {
+    const m = [head, ['', '', '', '', '', '', ''], ['', '2026-06-02', '', 'Museu', '', '', '']];
+    const { itens, erros } = validarAba('attractions', m);
+    expect(itens.length).toBe(1);
+    expect(erros).toEqual([]);
+  });
+
+  it('reclama de coluna obrigatória ausente', () => {
+    const { erros } = validarAba('attractions', [['id', 'data'], ['', '2026-06-02']]);
+    expect(erros[0].mensagem).toMatch(/ausente/);
+  });
+});
+
+describe('planilha — mesclagem', () => {
+  const base = () => normalizeState({
+    // participante cadastrado: sem ele, normalizeState limpa o paidBy órfão
+    settings: { participants: [{ id: 'p1', name: 'Ana' }] },
+    attractions: [
+      { id: 'a1', date: '2026-06-02', name: 'Museu', cost: 50, status: 'Planejado', paidBy: 'p1' },
+      { id: 'a2', date: '2026-06-03', name: 'Parque', cost: 20, status: 'Planejado' },
+    ],
+  });
+
+  it('atualiza pelo id e PRESERVA campos que a planilha não conhece', () => {
+    const { state, resumo } = mesclarPlanilha(base(), {
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu Nacional', cost: 80, status: 'Pago' }],
+    });
+    const item = state.attractions.find((x) => x.id === 'a1');
+    expect(item.name).toBe('Museu Nacional');
+    expect(item.cost).toBe(80);
+    expect(item.paidBy).toBe('p1');            // não estava na planilha, foi preservado
+    expect(resumo.attractions).toEqual({ criados: 0, atualizados: 1 });
+  });
+
+  it('linha sem id cria item novo', () => {
+    const { state, resumo } = mesclarPlanilha(base(), {
+      attractions: [{ date: '2026-06-04', name: 'Praia', cost: 0, status: 'Planejado' }],
+    });
+    expect(state.attractions.length).toBe(3);
+    expect(resumo.attractions.criados).toBe(1);
+  });
+
+  it('NÃO apaga o que existe no app e não está na planilha', () => {
+    const { state } = mesclarPlanilha(base(), {
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', cost: 50, status: 'Planejado' }],
+    });
+    expect(state.attractions.find((x) => x.id === 'a2')).toBeTruthy();
+  });
+
+  it('não muta o estado original', () => {
+    const orig = base();
+    const antes = JSON.stringify(orig);
+    mesclarPlanilha(orig, { attractions: [{ id: 'a1', name: 'X', date: '2026-06-02' }] });
+    expect(JSON.stringify(orig)).toBe(antes);
+  });
+});
+
+describe('planilha — ida e volta', () => {
+  it('exportar e reimportar não altera os dados', () => {
+    const st = normalizeState({
+      attractions: [{ id: 'a1', date: '2026-06-02', name: 'Museu', cost: 50, status: 'Reservado' }],
+    });
+    const matriz = linhasDe(st, 'attractions');
+    const { itens, erros } = validarAba('attractions', matriz);
+    expect(erros).toEqual([]);
+    const { state, resumo } = mesclarPlanilha(st, { attractions: itens });
+    expect(resumo.attractions).toEqual({ criados: 0, atualizados: 1 });
+    expect(state.attractions[0]).toMatchObject({ id: 'a1', name: 'Museu', cost: 50, status: 'Reservado' });
+  });
+
+  it('gera uma aba por tipo', () => {
+    expect(planilhaDe(normalizeState({})).map((x) => x.aba)).toEqual([
+      'Cidades', 'Transportes', 'Alimentacao', 'Atracoes', 'Outras', 'Checklist',
+    ]);
+  });
+
+  it('reconhece a aba mesmo sem acento ou com outra caixa', () => {
+    expect(kindPorAba('alimentacao')).toBe('foodItems');
+    expect(kindPorAba('ATRACOES')).toBe('attractions');
+    expect(kindPorAba('Inexistente')).toBe(null);
   });
 });
