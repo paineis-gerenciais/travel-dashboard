@@ -10,6 +10,7 @@ React 18 + Vite 5, Firebase 10 (Auth com Google, e-mail/senha e telefone; Firest
 - `docs/prumo/diagnostico-2026-11-07/`, `docs/prumo/avaliacao-2026-11-09/`, `docs/prumo/verificacao-2026-11-10.md`: avaliações e evidências.
 - Branch `<tipo>/<issue>-<slug>`; um PR por issue, em rascunho, com `Closes #<n>`.
 - Nunca commite dados pessoais reais: o repositório é público.
+- IA de roteiro: skill `roteiro-viagem` e agente `pesquisador-destino` em `.claude/` (issue #41). Eles gravam só em `importacoes/`, que o git ignora; o app recebe o resultado por Mais → Planilha, com prévia.
 
 ## Comandos
 | Tarefa | Comando |
@@ -34,6 +35,7 @@ export VITE_FIREBASE_API_KEY=fake-api-key VITE_FIREBASE_AUTH_DOMAIN=localhost VI
 | `firestore.rules`, `src/lib/tripData.js` | `npm run test:rules`; scripts `docs/prumo/diagnostico-2026-11-07/verifica-regras*.mjs`; `npm run test:e2e` |
 | `src/store/`, `src/components/`, `src/styles/` | `npm run lint` (depois da #21); `npm run test:e2e`; `npm run build`; E2E de duas contas (depois da #26) |
 | `vite.config.js`, service worker, `firebase.json`, workflows | `npm run build`; prévia do PR no Firebase Hosting; workflow `Qualidade` verde no PR |
+| `.claude/skills/roteiro-viagem/`, `.claude/agents/`, `src/domain/sheet.js`, importação por planilha | `node .claude/skills/roteiro-viagem/scripts/validar-importacao.mjs e2e/fixtures/importacao-exemplo.json` (saída 0); `npm test`; `npm run test:e2e -- e2e/importacao-json.spec.js` (depois da #41) |
 
 ## Cuidados
 - Regras do Firestore valem para o projeto inteiro, inclusive para a prévia do PR. Publicar só com autorização, junto com o front-end que depende delas.
