@@ -1089,6 +1089,12 @@ describe('documentos gerais: links seguros', () => {
     expect(collectLinks(s).some((l) => /^javascript:/i.test(l.url))).toBe(false);
   });
 
+  it('recusa link com usuário ou senha embutidos (destino disfarçado)', () => {
+    expect(isValidLink('https://drive.google.com@outro.exemplo/arquivo')).toBe(false);
+    expect(isValidLink('https://usuario:senha@exemplo.com/doc')).toBe(false);
+    expect(isValidLink('https://exemplo.com/doc?ref=a@b')).toBe(true);
+  });
+
   it('documents ausente ou malformado vira lista vazia', () => {
     expect(normalizeState({ cities: [] }).settings.documents).toEqual([]);
     expect(comDocs('nao-e-lista').settings.documents).toEqual([]);
