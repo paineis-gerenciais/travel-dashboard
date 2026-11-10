@@ -1,0 +1,17 @@
+vp | tema | status | estado | razao | fg | bg | fonte | peso | opac(linha/chip)
+360 | light | Planejado | FALHA | 4.2 | #64748b | #eef1f5 | 8.3pt (11px) | normal | 1/1
+360 | light | Reservado | ok | 5.96 | #1b4fd0 | #e8f0ff | 8.3pt (11px) | normal | 1/1
+360 | light | Pago | FALHA | 3.11 | #0f9d58 | #e6f5ec | 8.3pt (11px) | normal | 1/1
+360 | light | Cancelado | FALHA | 4.27 | #d1372f | #fdecea | 8.3pt (11px) | normal | 1/1
+360 | dark | Planejado | ok | 6.09 | #94a3b8 | #1e242c | 8.3pt (11px) | normal | 1/1
+360 | dark | Reservado | ok | 7.19 | #8ab0ff | #1a2438 | 8.3pt (11px) | normal | 1/1
+360 | dark | Pago | ok | 6.96 | #3ac07d | #12241b | 8.3pt (11px) | normal | 1/1
+360 | dark | Cancelado | ok | 5.36 | #f0645c | #2d1715 | 8.3pt (11px) | normal | 1/1
+1366 | light | Planejado | FALHA | 4.2 | #64748b | #eef1f5 | 8.3pt (11px) | normal | 1/1
+1366 | light | Reservado | ok | 5.96 | #1b4fd0 | #e8f0ff | 8.3pt (11px) | normal | 1/1
+1366 | light | Pago | FALHA | 3.11 | #0f9d58 | #e6f5ec | 8.3pt (11px) | normal | 1/1
+1366 | light | Cancelado | FALHA | 4.27 | #d1372f | #fdecea | 8.3pt (11px) | normal | 1/1
+1366 | dark | Planejado | ok | 6.09 | #94a3b8 | #1e242c | 8.3pt (11px) | normal | 1/1
+1366 | dark | Reservado | ok | 7.19 | #8ab0ff | #1a2438 | 8.3pt (11px) | normal | 1/1
+1366 | dark | Pago | ok | 6.96 | #3ac07d | #12241b | 8.3pt (11px) | normal | 1/1
+1366 | dark | Cancelado | ok | 5.36 | #f0645c | #2d1715 | 8.3pt (11px) | normal | 1/1
