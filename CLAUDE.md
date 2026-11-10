@@ -19,6 +19,7 @@ React 18 + Vite 5, Firebase 10 (Auth com Google, e-mail/senha e telefone; Firest
 | Testes de domínio | `npm test` |
 | Testes de regras (emulador; exige Java 21) | `npm run test:rules` |
 | Testes de jornada (emuladores + Chromium) | `npm run test:e2e` |
+| Um arquivo de jornada só | `npx firebase emulators:exec --only firestore,auth "npx playwright test <arquivo>"` (o `npm run test:e2e -- <arquivo>` falha: os argumentos vão para o firebase) |
 | Build | `npm run build` |
 | Lint | `npm run lint` (sem configuração até a issue #21) |
 
@@ -35,7 +36,7 @@ export VITE_FIREBASE_API_KEY=fake-api-key VITE_FIREBASE_AUTH_DOMAIN=localhost VI
 | `firestore.rules`, `src/lib/tripData.js` | `npm run test:rules`; scripts `docs/prumo/diagnostico-2026-11-07/verifica-regras*.mjs`; `npm run test:e2e` |
 | `src/store/`, `src/components/`, `src/styles/` | `npm run lint` (depois da #21); `npm run test:e2e`; `npm run build`; E2E de duas contas (depois da #26) |
 | `vite.config.js`, service worker, `firebase.json`, workflows | `npm run build`; prévia do PR no Firebase Hosting; workflow `Qualidade` verde no PR |
-| `.claude/skills/roteiro-viagem/`, `.claude/agents/`, `src/domain/sheet.js`, importação por planilha | `node .claude/skills/roteiro-viagem/scripts/validar-importacao.mjs e2e/fixtures/importacao-exemplo.json` (saída 0); `npm test`; `npm run test:e2e -- e2e/importacao-json.spec.js` (depois da #41) |
+| `.claude/skills/roteiro-viagem/`, `.claude/agents/`, `src/domain/sheet.js`, importação por planilha | `node .claude/skills/roteiro-viagem/scripts/validar-importacao.mjs e2e/fixtures/importacao-exemplo.json` (saída 0); `npm test`; `npx firebase emulators:exec --only firestore,auth "npx playwright test e2e/importacao-json.spec.js"` (depois da #41) |
 
 ## Cuidados
 - Regras do Firestore valem para o projeto inteiro, inclusive para a prévia do PR. Publicar só com autorização, junto com o front-end que depende delas.
