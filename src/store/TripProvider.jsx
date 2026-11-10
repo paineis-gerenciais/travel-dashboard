@@ -120,10 +120,10 @@ export function TripProvider({ tripId, user, children }) {
   }, []);
 
   const actions = {
-    updateItem(arrName, index, key, value) {
+    updateItem(arrName, id, key, value) {
       let becamePaid = false;
       mutate((s) => {
-        const item = s[arrName][index];
+        const item = s[arrName].find((x) => x.id === id);
         if (!item) return;
         item[key] = key === 'cost' || key === 'nightly' ? num(value) : value;
         if (key === 'time') item.period = periodByTime(value);
@@ -134,55 +134,72 @@ export function TripProvider({ tripId, user, children }) {
       });
       // 5.F — feed de atividade: só o evento discreto "marcou como Pago", não cada tecla
       if (becamePaid) {
-        const label = state[arrName][index]?.name || state[arrName][index]?.place || state[arrName][index]?.type || 'item';
+        const atual = state[arrName].find((x) => x.id === id);
+        const label = atual?.name || atual?.place || atual?.type || 'item';
         logActivity(tripId, user, `marcou "${label}" como Pago`);
       }
     },
-    deleteItem(arrName, index) { mutate((s) => s[arrName].splice(index, 1)); },
+    deleteItem(arrName, id) { mutate((s) => { s[arrName] = s[arrName].filter((x) => x.id !== id); }); },
     addCity() {
-      mutate((s) => s.cities.push({ id: uid(), city: '', emoji: '📍', start: '', end: '', hotel: '', nightly: 0, status: 'Planejado', notes: '', breakfastIncluded: false }));
+      const id = uid();
+      mutate((s) => s.cities.push({ id, city: '', emoji: '📍', start: '', end: '', hotel: '', nightly: 0, status: 'Planejado', notes: '', breakfastIncluded: false }));
       logActivity(tripId, user, 'adicionou uma cidade');
       track('city_added');
+      return id;
     },
-    setCityField(index, key, value) {
-      mutate((s) => { const c = s.cities[index]; if (!c) return; c[key] = key === 'nightly' ? num(value) : value; });
+    setCityField(id, key, value) {
+      mutate((s) => { const c = s.cities.find((x) => x.id === id); if (!c) return; c[key] = key === 'nightly' ? num(value) : value; });
     },
-    setCityStart(index, value) {
+    setCityStart(id, value) {
       mutate((s) => {
-        const c = s.cities[index]; if (!c) return;
+        const c = s.cities.find((x) => x.id === id); if (!c) return;
         c.start = value;
         if (value && (!c.end || c.end <= value)) {
           const d = new Date(value + 'T00:00'); d.setDate(d.getDate() + 1); c.end = d.toISOString().slice(0, 10);
         }
       });
     },
-    setCityEnd(index, value) {
+    setCityEnd(id, value) {
       let rejected = false;
       mutate((s) => {
-        const c = s.cities[index]; if (!c) return;
+        const c = s.cities.find((x) => x.id === id); if (!c) return;
         if (value && c.start && value <= c.start) { rejected = true; return; }
         c.end = value;
       });
       return !rejected;
     },
-    deleteCity(index, removeRelated) {
-      const name = state.cities[index]?.city || 'uma cidade';
-      mutate((s) => deleteCityCascade(s, index, removeRelated));
+    deleteCity(id, removeRelated) {
+      const name = state.cities.find((x) => x.id === id)?.city || 'uma cidade';
+      mutate((s) => deleteCityCascade(s, id, removeRelated));
       logActivity(tripId, user, `removeu ${name}`);
     },
     addTransport(firstDate) {
-      mutate((s) => s.transports.push({ id: uid(), date: firstDate || '', time: '09:00', originCity: '', originPlace: '', destCity: '', destPlace: '', mode: '', duration: '', cost: 0, status: 'Planejado', notes: '' }));
+      const id = uid();
+      mutate((s) => s.transports.push({ id, date: firstDate || '', time: '09:00', originCity: '', originPlace: '', destCity: '', destPlace: '', mode: '', duration: '', cost: 0, status: 'Planejado', notes: '' }));
+      return id;
     },
-    addFoodItem(date, city) { mutate((s) => s.foodItems.push({ id: uid(), date, city, type: 'Outros', place: '', cost: 0, status: 'Planejado' })); },
+    addFoodItem(date, city) {
+      const id = uid();
+      mutate((s) => s.foodItems.push({ id, date, city, type: 'Outros', place: '', cost: 0, status: 'Planejado' }));
+      return id;
+    },
     removeEmptyFood() {
       // item 4.4: limpa refeições vazias legadas (sem local e custo 0), exceto café automático
       mutate((s) => {
         s.foodItems = s.foodItems.filter((x) => x.autoBreakfast || (x.place && x.place.trim()) || num(x.cost) > 0);
       });
     },
-    addAttraction(date, city) { mutate((s) => s.attractions.push({ id: uid(), date, city, time: '09:00', period: 'Manhã', name: '', cost: 0, status: 'Planejado' })); },
-    addOther(date, city) { mutate((s) => s.otherExpenses.push({ id: uid(), date, city, name: '', cost: 0, status: 'Planejado' })); },
-    setOtherDate(index, date, city) { mutate((s) => { const o = s.otherExpenses[index]; if (!o) return; o.date = date; o.city = city; }); },
+    addAttraction(date, city) {
+      const id = uid();
+      mutate((s) => s.attractions.push({ id, date, city, time: '09:00', period: 'Manhã', name: '', cost: 0, status: 'Planejado' }));
+      return id;
+    },
+    addOther(date, city) {
+      const id = uid();
+      mutate((s) => s.otherExpenses.push({ id, date, city, name: '', cost: 0, status: 'Planejado' }));
+      return id;
+    },
+    setOtherDate(id, date, city) { mutate((s) => { const o = s.otherExpenses.find((x) => x.id === id); if (!o) return; o.date = date; o.city = city; }); },
     addChecklist(item = '') {
       mutate((s) => s.checklist.push({ id: uid(), category: 'Outros', item, responsible: '', priority: 'Média', status: 'Pendente', notes: '', done: false }));
     },
@@ -282,9 +299,9 @@ export function TripProvider({ tripId, user, children }) {
         alvo[key] = key === 'cost' || key === 'nightly' ? num(value) : value;
       });
     },
-    toggleChecklist(index, checked) {
-      const label = state.checklist[index]?.item || 'um item';
-      mutate((s) => { const c = s.checklist[index]; if (!c) return; c.done = checked; c.status = checked ? 'Concluído' : 'Pendente'; });
+    toggleChecklist(id, checked) {
+      const label = state.checklist.find((x) => x.id === id)?.item || 'um item';
+      mutate((s) => { const c = s.checklist.find((x) => x.id === id); if (!c) return; c.done = checked; c.status = checked ? 'Concluído' : 'Pendente'; });
       if (checked) logActivity(tripId, user, `concluiu "${label}" no checklist`);
     },
     seedChecklist() {

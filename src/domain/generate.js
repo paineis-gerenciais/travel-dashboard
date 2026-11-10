@@ -134,13 +134,14 @@ export function ensureGenerated(state) {
 }
 
 /**
- * Remove uma cidade pelo índice. Se `removeRelated` for true, remove também
+ * Remove uma cidade pelo id. Se `removeRelated` for true, remove também
  * itens ligados àquela cidade — usando os MESMOS getters do resto do código.
  */
-export function deleteCityCascade(state, index, removeRelated) {
-  const c = state.cities[index];
-  if (!c) return state;
-  state.cities.splice(index, 1);
+export function deleteCityCascade(state, id, removeRelated) {
+  const pos = state.cities.findIndex((x) => x.id === id);
+  if (pos < 0) return state;
+  const c = state.cities[pos];
+  state.cities.splice(pos, 1);
   if (removeRelated) {
     ['foodItems', 'attractions', 'otherExpenses'].forEach(
       (k) => (state[k] = state[k].filter((x) => x.city !== c.city))

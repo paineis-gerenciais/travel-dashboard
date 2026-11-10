@@ -33,19 +33,18 @@ export default function Checklist() {
           </thead>
           <tbody>
             {rows.map((x) => {
-              const i = state.checklist.indexOf(x);
               return (
                 <tr className={x.status === 'Cancelado' ? 'status-cancelado' : ''} key={x.id}>
                   <td data-label="OK">
-                    <input type="checkbox" checked={!!x.done} onChange={(e) => actions.toggleChecklist(i, e.target.checked)} />
+                    <input type="checkbox" checked={!!x.done} onChange={(e) => actions.toggleChecklist(x.id, e.target.checked)} />
                   </td>
-                  <td data-label="Categoria"><CategorySelect value={x.category} onChange={(v) => actions.updateItem('checklist', i, 'category', v)} /></td>
-                  <td data-label="Item"><input value={x.item || ''} onChange={(e) => actions.updateItem('checklist', i, 'item', e.target.value)} /></td>
-                  <td data-label="Responsável"><input value={x.responsible || ''} onChange={(e) => actions.updateItem('checklist', i, 'responsible', e.target.value)} /></td>
-                  <td data-label="Prioridade"><PrioritySelect value={x.priority} onChange={(v) => actions.updateItem('checklist', i, 'priority', v)} /></td>
-                  <td data-label="Status"><ChecklistStatusSelect value={x.status} onChange={(v) => actions.updateItem('checklist', i, 'status', v)} /></td>
-                  <td data-label="Observações"><input value={x.notes || ''} onChange={(e) => actions.updateItem('checklist', i, 'notes', e.target.value)} /></td>
-                  <td><button className="small-btn danger" onClick={() => actions.deleteItem('checklist', i)}>Excluir</button></td>
+                  <td data-label="Categoria"><CategorySelect value={x.category} onChange={(v) => actions.updateItem('checklist', x.id, 'category', v)} /></td>
+                  <td data-label="Item"><input value={x.item || ''} onChange={(e) => actions.updateItem('checklist', x.id, 'item', e.target.value)} /></td>
+                  <td data-label="Responsável"><input value={x.responsible || ''} onChange={(e) => actions.updateItem('checklist', x.id, 'responsible', e.target.value)} /></td>
+                  <td data-label="Prioridade"><PrioritySelect value={x.priority} onChange={(v) => actions.updateItem('checklist', x.id, 'priority', v)} /></td>
+                  <td data-label="Status"><ChecklistStatusSelect value={x.status} onChange={(v) => actions.updateItem('checklist', x.id, 'status', v)} /></td>
+                  <td data-label="Observações"><input value={x.notes || ''} onChange={(e) => actions.updateItem('checklist', x.id, 'notes', e.target.value)} /></td>
+                  <td><button className="small-btn danger" onClick={() => actions.deleteItem('checklist', x.id)}>Excluir</button></td>
                 </tr>
               );
             })}

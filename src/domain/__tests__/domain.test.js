@@ -324,7 +324,7 @@ describe('deleteCityCascade', () => {
       cities: [{ id: 'a', city: 'Kyoto', start: '2026-07-01', end: '2026-07-03' }],
       foodItems: [{ id: 'f', date: '2026-07-01', city: 'Kyoto', cost: 10 }],
     });
-    deleteCityCascade(state, 0, false);
+    deleteCityCascade(state, 'a', false);
     expect(state.cities.length).toBe(0);
     expect(state.foodItems.length).toBe(1); // preservado
   });
@@ -337,9 +337,31 @@ describe('deleteCityCascade', () => {
       ],
       transports: [{ id: 't', date: '2026-07-01', originCity: 'Kyoto', destCity: 'Osaka', cost: 50 }],
     });
-    deleteCityCascade(state, 0, true);
+    deleteCityCascade(state, 'a', true);
     expect(state.foodItems.map((x) => x.city)).toEqual(['Osaka']); // Kyoto removido
     expect(state.transports.length).toBe(0); // transporte de/para Kyoto removido
+  });
+  it('exclui pelo id certo depois de uma reordenação (inclusive a cascata)', () => {
+    const state = normalizeState({
+      cities: [
+        { id: 'lis', city: 'Lisboa', start: '2026-06-10', end: '2026-06-13' },
+        { id: 'por', city: 'Porto', start: '2026-06-01', end: '2026-06-05' },
+      ],
+      foodItems: [
+        { id: 'f1', date: '2026-06-11', city: 'Lisboa', cost: 10 },
+        { id: 'f2', date: '2026-06-02', city: 'Porto', cost: 10 },
+      ],
+    });
+    ensureGenerated(state); // reordena: Porto passa a ser a posição 0
+    expect(state.cities.map((c) => c.id)).toEqual(['por', 'lis']);
+    deleteCityCascade(state, 'lis', true);
+    expect(state.cities.map((c) => c.id)).toEqual(['por']);
+    expect(state.foodItems.map((x) => x.id)).toEqual(['f2']);
+  });
+  it('id inexistente não remove nada', () => {
+    const state = normalizeState({ cities: [{ id: 'a', city: 'Kyoto', start: '2026-07-01', end: '2026-07-03' }] });
+    deleteCityCascade(state, 'zzz', true);
+    expect(state.cities.length).toBe(1);
   });
 });
 

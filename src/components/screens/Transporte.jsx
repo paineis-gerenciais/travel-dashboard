@@ -54,7 +54,6 @@ export default function Transporte() {
           </thead>
           <tbody>
             {paged.map((x) => {
-              const i = state.transports.indexOf(x);
               const originCity = getTransportOriginCity(x);
               const originPlace = getTransportOriginPlace(x) || (!originCity ? getTransportOrigin(x) : '');
               const destCity = getTransportDestCity(x);
@@ -62,41 +61,41 @@ export default function Transporte() {
               return (
                 <tr className={statusRowClass(x)} key={x.id}>
                   <td data-label="Data">
-                    <input type="date" value={getTransportDate(x) || ''} onChange={(e) => actions.updateItem('transports', i, 'date', e.target.value)} />
+                    <input type="date" value={getTransportDate(x) || ''} onChange={(e) => actions.updateItem('transports', x.id, 'date', e.target.value)} />
                   </td>
                   <td data-label="Horário">
-                    <input type="time" value={x.time || ''} onChange={(e) => actions.updateItem('transports', i, 'time', e.target.value)} />
+                    <input type="time" value={x.time || ''} onChange={(e) => actions.updateItem('transports', x.id, 'time', e.target.value)} />
                   </td>
                   <td data-label="Origem cidade">
-                    <input value={originCity} placeholder="Cidade" onChange={(e) => actions.updateItem('transports', i, 'originCity', e.target.value)} />
+                    <input value={originCity} placeholder="Cidade" onChange={(e) => actions.updateItem('transports', x.id, 'originCity', e.target.value)} />
                   </td>
                   <td data-label="Origem local">
-                    <input value={originPlace} placeholder="Local" onChange={(e) => actions.updateItem('transports', i, 'originPlace', e.target.value)} />
+                    <input value={originPlace} placeholder="Local" onChange={(e) => actions.updateItem('transports', x.id, 'originPlace', e.target.value)} />
                   </td>
                   <td data-label="Destino cidade">
-                    <input value={destCity} placeholder="Cidade" onChange={(e) => actions.updateItem('transports', i, 'destCity', e.target.value)} />
+                    <input value={destCity} placeholder="Cidade" onChange={(e) => actions.updateItem('transports', x.id, 'destCity', e.target.value)} />
                   </td>
                   <td data-label="Destino local">
-                    <input value={destPlace} placeholder="Local" onChange={(e) => actions.updateItem('transports', i, 'destPlace', e.target.value)} />
+                    <input value={destPlace} placeholder="Local" onChange={(e) => actions.updateItem('transports', x.id, 'destPlace', e.target.value)} />
                   </td>
                   <td data-label="Meio">
-                    <input value={getTransportMode(x) || ''} onChange={(e) => actions.updateItem('transports', i, 'mode', e.target.value)} />
+                    <input value={getTransportMode(x) || ''} onChange={(e) => actions.updateItem('transports', x.id, 'mode', e.target.value)} />
                   </td>
                   <td data-label="Tempo">
-                    <DurationInput item={x} onChange={(min) => actions.updateItem('transports', i, 'duration', min)} />
+                    <DurationInput item={x} onChange={(min) => actions.updateItem('transports', x.id, 'duration', min)} />
                   </td>
                   <td data-label="Custo">
-                    <MoneyInput value={getTransportCost(x)} onChange={(v) => actions.updateItem('transports', i, 'cost', v)} />
+                    <MoneyInput value={getTransportCost(x)} onChange={(v) => actions.updateItem('transports', x.id, 'cost', v)} />
                   </td>
                   <td data-label="Status">
-                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', i, 'status', v)} />
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', x.id, 'status', v)} />
                   </td>
                   <td data-label="Período"><span className="badge">{periodByTime(x.time)}</span></td>
                   <td data-label="Observações">
-                    <input value={x.notes || ''} onChange={(e) => actions.updateItem('transports', i, 'notes', e.target.value)} />
+                    <input value={x.notes || ''} onChange={(e) => actions.updateItem('transports', x.id, 'notes', e.target.value)} />
                   </td>
                   <td>
-                    <button className="small-btn danger" onClick={() => actions.deleteItem('transports', i)}>Excluir</button>
+                    <button className="small-btn danger" onClick={() => actions.deleteItem('transports', x.id)}>Excluir</button>
                   </td>
                 </tr>
               );

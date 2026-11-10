@@ -191,10 +191,10 @@ function ChecklistSheet({ onClose }) {
 
   // T-1.10: busca por texto + filtro por status, tudo no cliente.
   const norm = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const linkChecklistItem = linkChecklist != null ? state.checklist.find((x) => x.id === linkChecklist) : null;
   const visiveis = state.checklist
-    .map((c, i) => ({ c, i }))
-    .filter(({ c }) => (q ? norm(c.item).includes(norm(q)) : true))
-    .filter(({ c }) => (statusFilter === 'todos' ? true : c.status === statusFilter));
+    .filter((c) => (q ? norm(c.item).includes(norm(q)) : true))
+    .filter((c) => (statusFilter === 'todos' ? true : c.status === statusFilter));
 
   const add = () => {
     if (!item.trim()) return;
@@ -220,14 +220,14 @@ function ChecklistSheet({ onClose }) {
           </div>
         )}
 
-        {linkChecklist != null && state.checklist[linkChecklist] && (
+        {linkChecklistItem && (
           <Sheet title="Anexar link" onClose={() => setLinkChecklist(null)}>
             <div className="stack">
               <p className="small t2" style={{ margin: 0 }}>
-                {state.checklist[linkChecklist].item || 'Item do checklist'}
+                {linkChecklistItem.item || 'Item do checklist'}
               </p>
               <LinkField
-                link={state.checklist[linkChecklist].link}
+                link={linkChecklistItem.link}
                 onChange={(key, value) => actions.updateItem('checklist', linkChecklist, key, value)}
               />
               <div className="sheet-footer stack-2">
@@ -249,26 +249,26 @@ function ChecklistSheet({ onClose }) {
             {visiveis.length === 0 && (
               <p className="small t2" style={{ padding: 'var(--sp-4)', margin: 0 }}>Nenhum item encontrado.</p>
             )}
-            {visiveis.map(({ c, i }) => (
+            {visiveis.map((c) => (
               <div className="row" key={c.id}>
                 <input
                   type="checkbox"
                   checked={!!c.done}
                   aria-label={c.item}
-                  onChange={(e) => actions.toggleChecklist(i, e.target.checked)}
+                  onChange={(e) => actions.toggleChecklist(c.id, e.target.checked)}
                 />
                 <div className="row-main">
                   <input
                     value={c.item}
-                    onChange={(e) => actions.updateItem('checklist', i, 'item', e.target.value)}
+                    onChange={(e) => actions.updateItem('checklist', c.id, 'item', e.target.value)}
                     style={{ border: 0, padding: 0, minHeight: 0, fontWeight: 600, textDecoration: c.done ? 'line-through' : 'none' }}
                   />
                   <div className="row-actions">
-                    <StatusChip value={c.status} options={CHECKLIST_STATUS} onChange={(v) => actions.updateItem('checklist', i, 'status', v)} />
-                    <button className="btn-ghost btn-sm" onClick={() => setLinkChecklist(i)}>
+                    <StatusChip value={c.status} options={CHECKLIST_STATUS} onChange={(v) => actions.updateItem('checklist', c.id, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setLinkChecklist(c.id)}>
                       {hasLink(c) ? '📎 Link' : 'Anexar link'}
                     </button>
-                    <button className="btn-ghost btn-sm" onClick={() => actions.deleteItem('checklist', i)}>Excluir</button>
+                    <button className="btn-ghost btn-sm" onClick={() => actions.deleteItem('checklist', c.id)}>Excluir</button>
                   </div>
                 </div>
               </div>

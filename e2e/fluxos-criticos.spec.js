@@ -95,6 +95,29 @@ test.describe('fluxos críticos', () => {
     await expect(page.getByRole('dialog', { name: 'Editar atração' })).toBeVisible();
   });
 
+  test('folha de cidade continua na mesma cidade quando a lista é reordenada (#25)', async ({ page }) => {
+    await criarViagem(page, 'Viagem Reordena');
+    await cadastrarCidade(page, { cidade: 'Lisboa', checkin: '2030-06-10', checkout: '2030-06-13' });
+
+    // cidade nova, com a folha aberta: o check-in anterior ao de Lisboa a coloca na frente da lista
+    await page.getByRole('button', { name: /adicionar cidade/i }).first().click();
+    const dialogo = page.getByRole('dialog', { name: 'Editar cidade' });
+    await expect(dialogo).toBeVisible();
+    await dialogo.getByLabel('Check-in').fill('2030-06-01');
+    await dialogo.getByLabel('Cidade', { exact: true }).fill('Porto');
+    await dialogo.getByLabel('Check-out').fill('2030-06-05');
+
+    // a folha continua mostrando a cidade nova, não Lisboa
+    await expect(dialogo.getByLabel('Cidade', { exact: true })).toHaveValue('Porto');
+    await expect(dialogo.getByLabel('Check-in')).toHaveValue('2030-06-01');
+    await dialogo.getByRole('button', { name: 'Concluir' }).click();
+    await expect(dialogo).toBeHidden();
+
+    // na lista, as datas das duas estão corretas e Lisboa não mudou
+    await expect(page.getByText('01/06/2030 → 05/06/2030')).toBeVisible();
+    await expect(page.getByText('10/06/2030 → 13/06/2030')).toBeVisible();
+  });
+
   test('custos: legenda com nomes e seção por status aparecem', async ({ page }) => {
     await criarViagem(page, 'Viagem Custos');
     await cadastrarCidade(page, {

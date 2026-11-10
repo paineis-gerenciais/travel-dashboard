@@ -127,7 +127,6 @@ export default function PorDia({ onNavigate, tripId }) {
         )}
 
         {transports.map((x) => {
-          const idxReal = state.transports.indexOf(x);
           const dur = getTransportDurationMinutes(x);
           return (
             <div className={`route-box ${statusRowClass(x)}`} key={x.id} style={{ marginBottom: 8 }}>
@@ -136,10 +135,10 @@ export default function PorDia({ onNavigate, tripId }) {
                   <b>{getTransportMode(x) || 'Transporte'}</b>{x.time ? ` · ${x.time}` : ''}{dur ? ` · ${minutesToLabel(dur)}` : ''}
                   <div className="muted" style={{ fontSize: 13 }}>{getTransportOrigin(x)} → {getTransportDest(x)}</div>
                 </div>
-                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('transports', idxReal, 'cost', v)} style={{ maxWidth: 90 }} />
+                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('transports', x.id, 'cost', v)} style={{ maxWidth: 90 }} />
               </div>
               <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', idxReal, 'status', v)} />
+                <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', x.id, 'status', v)} />
                 <CommentThread tripId={tripId} itemKey={itemKey('transports', x.id)} />
               </div>
             </div>
@@ -161,19 +160,18 @@ export default function PorDia({ onNavigate, tripId }) {
         )}
 
         {foods.map((x) => {
-          const idxReal = state.foodItems.indexOf(x);
           return (
             <div className={`route-box ${statusRowClass(x)}`} key={x.id} style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
-                  <input value={x.type} onChange={(e) => actions.updateItem('foodItems', idxReal, 'type', e.target.value)} style={{ fontWeight: 700, marginBottom: 4 }} />
-                  <input value={x.place || ''} placeholder="Local" onChange={(e) => actions.updateItem('foodItems', idxReal, 'place', e.target.value)} />
+                  <input value={x.type} onChange={(e) => actions.updateItem('foodItems', x.id, 'type', e.target.value)} style={{ fontWeight: 700, marginBottom: 4 }} />
+                  <input value={x.place || ''} placeholder="Local" onChange={(e) => actions.updateItem('foodItems', x.id, 'place', e.target.value)} />
                 </div>
-                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('foodItems', idxReal, 'cost', v)} style={{ maxWidth: 90 }} />
-                <button className="small-btn danger" onClick={() => actions.deleteItem('foodItems', idxReal)}>✕</button>
+                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('foodItems', x.id, 'cost', v)} style={{ maxWidth: 90 }} />
+                <button className="small-btn danger" onClick={() => actions.deleteItem('foodItems', x.id)}>✕</button>
               </div>
               <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', idxReal, 'status', v)} />
+                <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', x.id, 'status', v)} />
                 <CommentThread tripId={tripId} itemKey={itemKey('foodItems', x.id)} />
               </div>
             </div>
@@ -184,16 +182,15 @@ export default function PorDia({ onNavigate, tripId }) {
         </button>
 
         {attractions.map((x) => {
-          const idxReal = state.attractions.indexOf(x);
           return (
             <div className={`route-box ${statusRowClass(x)}`} key={x.id} style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                <input value={x.name} placeholder="Atração" onChange={(e) => actions.updateItem('attractions', idxReal, 'name', e.target.value)} style={{ flex: 1 }} />
-                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('attractions', idxReal, 'cost', v)} style={{ maxWidth: 90 }} />
-                <button className="small-btn danger" onClick={() => actions.deleteItem('attractions', idxReal)}>✕</button>
+                <input value={x.name} placeholder="Atração" onChange={(e) => actions.updateItem('attractions', x.id, 'name', e.target.value)} style={{ flex: 1 }} />
+                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('attractions', x.id, 'cost', v)} style={{ maxWidth: 90 }} />
+                <button className="small-btn danger" onClick={() => actions.deleteItem('attractions', x.id)}>✕</button>
               </div>
               <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', idxReal, 'status', v)} />
+                <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', x.id, 'status', v)} />
                 <CommentThread tripId={tripId} itemKey={itemKey('attractions', x.id)} />
               </div>
             </div>
@@ -204,13 +201,12 @@ export default function PorDia({ onNavigate, tripId }) {
         </button>
 
         {others.map((x) => {
-          const idxReal = state.otherExpenses.indexOf(x);
           return (
             <div className={`route-box ${statusRowClass(x)}`} key={x.id} style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                <input value={x.name} placeholder="Outra despesa" onChange={(e) => actions.updateItem('otherExpenses', idxReal, 'name', e.target.value)} style={{ flex: 1 }} />
-                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('otherExpenses', idxReal, 'cost', v)} style={{ maxWidth: 90 }} />
-                <button className="small-btn danger" onClick={() => actions.deleteItem('otherExpenses', idxReal)}>✕</button>
+                <input value={x.name} placeholder="Outra despesa" onChange={(e) => actions.updateItem('otherExpenses', x.id, 'name', e.target.value)} style={{ flex: 1 }} />
+                <MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('otherExpenses', x.id, 'cost', v)} style={{ maxWidth: 90 }} />
+                <button className="small-btn danger" onClick={() => actions.deleteItem('otherExpenses', x.id)}>✕</button>
               </div>
             </div>
           );

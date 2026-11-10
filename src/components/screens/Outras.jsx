@@ -28,17 +28,16 @@ export default function Outras() {
           <thead><tr><th>Data</th><th>Cidade</th><th>Despesa</th><th>Custo</th><th>Status</th><th></th></tr></thead>
           <tbody>
             {paged.map((x) => {
-              const i = state.otherExpenses.indexOf(x);
               return (
                 <tr className={statusRowClass(x)} key={x.id}>
                   <td data-label="Data">
-                    <input type="date" value={x.date || ''} onChange={(e) => actions.setOtherDate(i, e.target.value, cityForDate(state, e.target.value))} />
+                    <input type="date" value={x.date || ''} onChange={(e) => actions.setOtherDate(x.id, e.target.value, cityForDate(state, e.target.value))} />
                   </td>
                   <td data-label="Cidade">{x.city}</td>
-                  <td data-label="Despesa"><input value={x.name || ''} onChange={(e) => actions.updateItem('otherExpenses', i, 'name', e.target.value)} /></td>
-                  <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('otherExpenses', i, 'cost', v)} /></td>
-                  <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('otherExpenses', i, 'status', v)} /></td>
-                  <td><button className="small-btn danger" onClick={() => actions.deleteItem('otherExpenses', i)}>Excluir</button></td>
+                  <td data-label="Despesa"><input value={x.name || ''} onChange={(e) => actions.updateItem('otherExpenses', x.id, 'name', e.target.value)} /></td>
+                  <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('otherExpenses', x.id, 'cost', v)} /></td>
+                  <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('otherExpenses', x.id, 'status', v)} /></td>
+                  <td><button className="small-btn danger" onClick={() => actions.deleteItem('otherExpenses', x.id)}>Excluir</button></td>
                 </tr>
               );
             })}
