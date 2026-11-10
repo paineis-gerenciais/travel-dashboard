@@ -1,0 +1,46 @@
+OK  P1a | esperado PERMITIDO | obtido PERMITIDO | membro troca o proprio members.email para o de outra pessoa
+OK  P1b | esperado PERMITIDO | obtido PERMITIDO | convidado apaga o proprio convite ja aceito
+OK  P1c | esperado PERMITIDO | obtido PERMITIDO | membro aponta members.email para o e-mail do convite pendente de Y
+     P1d: remocao de X pelo fluxo do app (X apagou o proprio convite) usou o e-mail "null"; convite pendente de Y existe depois? true
+OK  P1e | esperado NEGADO | obtido NEGADO | X removido (convite dele apagado) tenta voltar
+OK  R1a | esperado NEGADO | obtido NEGADO | X se inclui pelo SDK sem marcar o convite no mesmo lote
+     R1b: remocao pelo app usou o e-mail "null"; convite de X ainda existe? true status=pendente
+OK  R1c | esperado NEGADO | obtido NEGADO | X removido volta sozinho (convite pendente nao apagado)
+OK  R1d | esperado NEGADO | obtido NEGADO | X com members.email falso removido (app usou "x@exemplo.com") volta sozinho
+OK  R2 | esperado NEGADO | obtido NEGADO | convidado grava acceptedByUid de OUTRA pessoa ao aceitar
+OK  R2b | esperado NEGADO | obtido NEGADO | lote: entra na viagem + convite aceito com acceptedByUid alheio
+OK  R2c | esperado NEGADO | obtido NEGADO | lote: entra na viagem + convite recusado
+OK  R2d | esperado NEGADO | obtido NEGADO | cliente antigo: entra (sem lote) e depois marca aceito
+OK  R2e | esperado NEGADO | obtido NEGADO | lote: entra na viagem de Y usando o convite de Y (e-mail alheio)
+OK  R2f | esperado NEGADO | obtido NEGADO | lote: entra + membro cria members no mesmo lote (deve falhar: isMember le estado anterior)
+OK  R2g | esperado NEGADO | obtido NEGADO | X apos aceitar pelo app apaga o proprio convite, e removido nao volta
+     R2h: depois de R2g, convite de X existe? false; memberUids=["uid_dono"]
+OK  P2a | esperado NEGADO | obtido NEGADO | login por telefone (sem email no token) se auto-inclui com convites trip1_null/_undefined/_ plantados
+OK  P2b | esperado NEGADO | obtido NEGADO | login por telefone le convite de e-mail vazio
+OK  P2c | esperado NEGADO | obtido NEGADO | token com email mas sem claim email_verified se auto-inclui
+OK  P2d | esperado PERMITIDO | obtido PERMITIDO | dono por telefone cria convite
+OK  P2e | esperado PERMITIDO | obtido PERMITIDO | dono por telefone lista os convites (where ownerUid ==)
+OK  P2f | esperado PERMITIDO | obtido PERMITIDO | dono por telefone reenvia convite (setDoc no mesmo id)
+OK  P3a | esperado NEGADO | obtido NEGADO | removido com convite aceito remanescente tenta voltar
+OK  P3b | esperado NEGADO | obtido NEGADO | convidado volta o proprio convite aceito para pendente
+OK  P3c | esperado PERMITIDO | obtido PERMITIDO | dono reenvia (setDoc sem merge) sobre convite aceito
+OK  P3d | esperado PERMITIDO | obtido PERMITIDO | apos reenvio do dono, X volta pelo fluxo do app
+OK  P3e | esperado NEGADO | obtido NEGADO | dono muda tripId do convite no update
+OK  P3f | esperado NEGADO | obtido NEGADO | dono marca convite como aceito no update
+OK  P3g | esperado NEGADO | obtido NEGADO | dono troca emailConvidado no update
+     P3h: remocao pelo app usou "x@exemplo.com"; convite apagado? true
+OK  P3i | esperado NEGADO | obtido NEGADO | X removido nao volta
+OK  P3j | esperado PERMITIDO | obtido PERMITIDO | dono convida X de novo (createInvite = create)
+OK  P3k | esperado PERMITIDO | obtido PERMITIDO | X aceita de novo pelo fluxo do app
+     P3l: memberUids final = ["uid_dono","uid_x"]
+OK  P3m | esperado PERMITIDO | obtido PERMITIDO | dono reenvia convite de quem AINDA e membro (acceptedByUid some)
+     P3n: convite de X depois do reenvio: {"tripId":"trip1","tripName":"T","emailConvidado":"x@exemplo.com","ownerUid":"uid_dono","ownerEmail":"dono@exemplo.com","status":"pendente"}
+OK  P4a | esperado PERMITIDO | obtido PERMITIDO | dono: where ownerUid == dono
+OK  P4b | esperado PERMITIDO | obtido PERMITIDO | convidado verificado: where emailConvidado == proprio
+OK  P4c | esperado NEGADO | obtido NEGADO | convidado NAO verificado: where emailConvidado == proprio
+OK  P4d | esperado NEGADO | obtido NEGADO | verificado: where emailConvidado == alheio
+OK  P4e | esperado NEGADO | obtido NEGADO | estranho: where ownerUid == dono
+OK  P5a | esperado NEGADO | obtido NEGADO | membro nao-dono executa deleteTrip (apaga versoes)
+OK  P5b | esperado PERMITIDO | obtido PERMITIDO | dono: deleteTrip (lista versoes, apaga todas, apaga viagem)
+     P5c: depois: versions/v1 existe? false; trip existe? false; members/uid_x orfao? true; convite X orfao? true
+TOTAL 38 | conforme esperado 38 | divergentes 0: 
