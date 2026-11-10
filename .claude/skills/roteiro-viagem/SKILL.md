@@ -113,7 +113,7 @@ Com a exportação da viagem atual, acrescente `--viagem importacoes/<pasta>/<ex
 ## 7. Entregar
 
 Diga ao usuário, em linguagem simples:
-1. Onde estão os três arquivos: `importacao.json`, `importacao.xlsx` e `relatorio.md`.
+1. Onde estão os arquivos: `importacao.json`, `relatorio.md` e, quando o script conseguiu gerar, `importacao.xlsx`. Se a planilha não foi gerada (atualização por `id` com colunas diferentes), diga isso e indique o `.json`.
 2. Como importar: no app, **Mais → Planilha → Enviar planilha preenchida**, escolha o `.json` (preferido, e obrigatório quando há atualização por `id`) ou o `.xlsx`, confira a prévia e toque em **Aplicar à viagem**.
 3. **Não use "Importar JSON"**: aquele botão substitui a viagem inteira (é para cópia de segurança) e recusa este arquivo.
 4. Quantos itens serão criados ou atualizados por aba, o total estimado em reais e os pontos não confirmados.
