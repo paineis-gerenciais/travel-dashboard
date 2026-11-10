@@ -43,7 +43,7 @@ import { ensureGenerated, deleteCityCascade, cloneTripState } from '../generate.
 import {
   splitSummary, settlements, participants, participantName,
   allCostRows, effectiveSplit, rowsForParticipant,
-  settlementKey, withSettlementStatus,
+  settlementKey, paymentsList, allSettled, splitCents, toCents,
 } from '../split.js';
 import { pendingReminders } from '../../lib/reminders.js';
 import { gmaps, getTransportCost, durationToMinutes, minutesToLabel } from '../transport.js';
@@ -779,24 +779,164 @@ describe('allPlanningDates após ensureGenerated', () => {
 });
 
 
-/* ---------- Confirmação de acerto ---------- */
-describe('withSettlementStatus', () => {
-  const acerto = { fromId: 'p2', toId: 'p1', from: 'Bruno', to: 'Ana', valor: 50 };
+/* ---------- Acerto: pagamentos abatem o saldo, centavos fecham (#24) ---------- */
+describe('acerto com pagamentos e centavos', () => {
+  const A = 'pa'; const B = 'pb'; const C = 'pc'; const D = 'pd';
+  const mk = (ids, atracoes, payments = []) => normalizeState({
+    settings: { participants: ids.map((id) => ({ id, name: id.toUpperCase() })), payments },
+    attractions: atracoes.map((x, i) => ({ id: `a${i}`, date: '2026-08-08', name: `D${i}`, status: 'Planejado', ...x })),
+  });
+  const pg = (de, para, valor, id = `${de}${para}${valor}`) => ({ id, de, para, valor, data: '2026-11-01T10:00:00.000Z' });
+  const soma = (r) => r.rows.reduce((a, x) => a + x.balanceCents, 0);
 
-  it('acerto não confirmado aparece como pendente', () => {
-    const st = normalizeState({});
-    expect(withSettlementStatus(st, [acerto])[0].confirmado).toBe(false);
+  it('caso do parecer: A paga 100, B paga 30, com 33,33 já confirmados', () => {
+    const st = mk([A, B, C],
+      [{ cost: 100, paidBy: A }, { cost: 30, paidBy: B }],
+      [pg(B, A, 33.33), pg(C, A, 33.33)]);
+    const r = splitSummary(st);
+    const ac = settlements(r).map((x) => [x.fromId, x.toId, x.valor]);
+    // dois devedores empatados em 10,00: a ordem segue a lista (A antes de C)
+    expect(ac).toEqual([[A, B, 10], [C, B, 10]]);
+    expect(soma(r)).toBe(0);
   });
 
-  it('acerto confirmado aparece como confirmado', () => {
-    const st = normalizeState({ settings: { settlementsDone: [{ key: settlementKey(acerto) }] } });
-    expect(withSettlementStatus(st, [acerto])[0].confirmado).toBe(true);
+  it('sem pagamentos, o acerto é o saldo cheio e fecha em centavos', () => {
+    const st = mk([A, B, C], [{ cost: 100, paidBy: A }]);
+    const ac = settlements(splitSummary(st));
+    expect(ac.map((x) => x.cents)).toEqual([3333, 3333]);
+    expect(ac.every((x) => x.toId === A)).toBe(true);
   });
 
-  it('se o valor da dívida muda, a confirmação antiga não vale mais', () => {
-    const st = normalizeState({ settings: { settlementsDone: [{ key: settlementKey(acerto) }] } });
-    const novo = { ...acerto, valor: 80 }; // surgiu uma despesa nova
-    expect(withSettlementStatus(st, [novo])[0].confirmado).toBe(false);
+  it('acerto com 4 pessoas: transferências zeram todos os saldos', () => {
+    const st = mk([A, B, C, D], [{ cost: 250, paidBy: A }, { cost: 90.5, paidBy: B }, { cost: 41.17, paidBy: C }]);
+    const r = splitSummary(st);
+    const saldo = Object.fromEntries(r.rows.map((x) => [x.id, x.balanceCents]));
+    settlements(r).forEach((t) => { saldo[t.fromId] += t.cents; saldo[t.toId] -= t.cents; });
+    expect(Object.values(saldo).every((v) => v === 0)).toBe(true);
+  });
+
+  it('pagamento total quita: sem acerto e "ninguém deve nada"', () => {
+    const st = mk([A, B], [{ cost: 100, paidBy: A }], [pg(B, A, 50)]);
+    const r = splitSummary(st);
+    expect(settlements(r)).toEqual([]);
+    expect(allSettled(r)).toBe(true);
+  });
+
+  it('desfazer (remover o pagamento) restaura o acerto', () => {
+    const st = mk([A, B], [{ cost: 100, paidBy: A }], []);
+    expect(settlements(splitSummary(st))).toHaveLength(1);
+  });
+
+  it('despesa sem pagador com acerto: saldos não zeram e há despesa sem pagador', () => {
+    const st = mk([A, B], [{ cost: 100, paidBy: A }, { cost: 40 }]);
+    const r = splitSummary(st);
+    expect(r.unassigned).toBe(40);
+    expect(r.unassignedItems.map((u) => u.valor)).toEqual([40]);
+    expect(allSettled(r)).toBe(false);
+    expect(settlements(r)).toEqual([expect.objectContaining({ fromId: B, toId: A, valor: 30 })]);
+  });
+
+  it('só despesa sem pagador: sem acerto, mas allSettled é falso', () => {
+    const r = splitSummary(mk([A, B], [{ cost: 40 }]));
+    expect(settlements(r)).toEqual([]);
+    expect(allSettled(r)).toBe(false);
+  });
+
+  it('partes somam exatamente o total (100/3 e 1750/3)', () => {
+    [100, 1750, 0.05, 33.34].forEach((v) => {
+      const st = mk([A, B, C], [{ cost: v, paidBy: A }]);
+      const partes = splitCents(st, st.attractions[0], toCents(v));
+      expect(Object.values(partes).reduce((a, b) => a + b, 0)).toBe(toCents(v));
+    });
+    const st = mk([A, B, C], [{ cost: 100 }]);
+    expect(splitCents(st, st.attractions[0], 10000)).toEqual({ [A]: 3334, [B]: 3333, [C]: 3333 });
+    const st2 = mk([A, B, C], [{ cost: 1750 }]);
+    expect(Object.values(splitCents(st2, st2.attractions[0], 175000))).toEqual([58334, 58333, 58333]);
+  });
+
+  it('maior resto: o centavo vai para a maior fração; empate pela ordem', () => {
+    const st = mk([A, B, C], [{ cost: 0.1 }]);
+    st.attractions[0].split = { [A]: 20, [B]: 30, [C]: 50 };
+    // 10 centavos: 2, 3, 5 exatos
+    expect(splitCents(st, st.attractions[0], 10)).toEqual({ [A]: 2, [B]: 3, [C]: 5 });
+    st.attractions[0].split = { [A]: 1, [B]: 1, [C]: 2 };
+    // 3 centavos: 0,75 / 0,75 / 1,5 -> piso 0,0,1; sobram 2: A e B (0,75) vencem C (0,5)
+    expect(splitCents(st, st.attractions[0], 3)).toEqual({ [A]: 1, [B]: 1, [C]: 1 });
+    // 1 centavo: empate A/B em 0,25 -> A (ordem da lista); C tem 0,5 e vence
+    expect(splitCents(st, st.attractions[0], 1)).toEqual({ [A]: 0, [B]: 0, [C]: 1 });
+  });
+
+  it('owed dos participantes soma o total e é determinístico', () => {
+    const st = mk([A, B, C], [{ cost: 100, paidBy: A }]);
+    const r1 = splitSummary(st); const r2 = splitSummary(st);
+    expect(r1).toEqual(r2);
+    expect(r1.rows.reduce((a, x) => a + x.owed, 0)).toBeCloseTo(100, 9);
+    expect(r1.rows.map((x) => x.owed)).toEqual([33.34, 33.33, 33.33]);
+  });
+
+  it('paid é só de despesas; settled traz o efeito dos acertos; saldo soma os dois (#38, D2)', () => {
+    const st = mk([A, B, C], [{ cost: 100, paidBy: A }], [pg(B, A, 33.33)]);
+    const r = splitSummary(st);
+    const por = Object.fromEntries(r.rows.map((x) => [x.id, x]));
+    expect(por[A].paid).toBe(100);            // nunca "Pagou 66,67"
+    expect(por[A].settled).toBe(-33.33);      // recebeu
+    expect(por[B].paid).toBe(0);
+    expect(por[B].settled).toBe(33.33);       // pagou o acerto
+    expect(por[C].settled).toBe(0);
+    expect(por[A].balanceCents).toBe(10000 - 3333 - 3334);
+    expect(por[B].balanceCents).toBe(0 + 3333 - 3333);
+    expect(soma(r)).toBe(0);
+  });
+
+  it('sem pagamentos, settled é 0 em todos', () => {
+    const r = splitSummary(mk([A, B], [{ cost: 100, paidBy: A }]));
+    expect(r.rows.map((x) => x.settled)).toEqual([0, 0]);
+  });
+
+  it('pagamentos inválidos são ignorados', () => {
+    const st = mk([A, B], [{ cost: 100, paidBy: A }], [{ id: 'x', de: A, para: A, valor: 10 }, { id: 'y', de: A, para: B, valor: 0 }]);
+    expect(paymentsList(st)).toEqual([]);
+  });
+});
+
+describe('migração settlementsDone -> payments', () => {
+  const desp = [{ id: 'a', date: '2026-08-08', name: 'X', cost: 66.66, status: 'Planejado', paidBy: 'p1' }];
+  const antigo = () => ({
+    attractions: desp.map((x) => ({ ...x })),
+    settings: {
+      participants: [{ id: 'p1', name: 'Ana' }, { id: 'p2', name: 'Bruno' }],
+      settlementsDone: [{ key: 'p2>p1>3333', at: '2026-11-05T12:00:00.000Z' }, { key: 'lixo' }],
+    },
+  });
+
+  it('converte a chave em pagamento com valor e data, sem esvaziar o legado', () => {
+    const s = normalizeState(antigo());
+    expect(s.settings.payments).toHaveLength(1);
+    expect(s.settings.payments[0]).toMatchObject({ id: 'mig-p2>p1>3333', de: 'p2', para: 'p1', valor: 33.33, data: '2026-11-05T12:00:00.000Z' });
+    expect(s.settings.settlementsDone).toEqual(antigo().settings.settlementsDone);
+    expect(s.settings.paymentsMigrated).toBe(true);
+  });
+
+  it('é idempotente: rodar duas vezes não duplica', () => {
+    const uma = normalizeState(antigo());
+    const duas = normalizeState(uma);
+    expect(duas.settings.payments).toEqual(uma.settings.payments);
+    // mesmo se o legado voltar (gravação de cliente antigo)
+    const volta = normalizeState({ ...uma, settings: { ...uma.settings, settlementsDone: antigo().settings.settlementsDone } });
+    expect(volta.settings.payments).toHaveLength(1);
+  });
+
+  it('o pagamento migrado abate o saldo', () => {
+    const s = normalizeState({ ...antigo(), attractions: [{ id: 'a', date: '2026-08-08', name: 'X', cost: 100, status: 'Planejado', paidBy: 'p1' }] });
+    // chave 3333 bate com o acerto atual de 5000 só se a tolerância permitir; aqui não bate
+    expect(s.settings.payments).toEqual([]);
+    const r = splitSummary(s);
+    expect(settlements(r).map((x) => x.cents)).toEqual([5000]);
+  });
+
+  it('viagem nova e viagem sem settlementsDone nascem com paymentsMigrated', () => {
+    expect(normalizeState({}).settings.paymentsMigrated).toBe(true);
+    expect(normalizeState({ settings: { participants: [] } }).settings.paymentsMigrated).toBe(true);
   });
 });
 

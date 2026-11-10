@@ -232,13 +232,22 @@ export function TripProvider({ tripId, user, children }) {
         s.settings.participants = (lista || []).map((p) => ({ id: p.id, name: p.name }));
       });
     },
-    /** Confirma (ou desfaz a confirmação de) um acerto de contas. */
-    toggleSettlementDone(key, confirmado) {
+    /** Confirma um acerto: registra um pagamento { id, de, para, valor, data } que abate o saldo. */
+    confirmSettlement({ fromId, toId, valor }) {
+      if (!fromId || !toId || fromId === toId || !(num(valor) > 0)) return;
       mutate((s) => {
-        const atuais = (s.settings.settlementsDone || []).filter((x) => x.key !== key);
-        s.settings.settlementsDone = confirmado
-          ? [...atuais, { key, at: new Date().toISOString() }]
-          : atuais;
+        if (!fromId || !toId || fromId === toId || !(num(valor) > 0)) return;
+        s.settings.payments = [
+          ...(s.settings.payments || []),
+          { id: uid(), de: fromId, para: toId, valor: Math.round(num(valor) * 100) / 100, data: new Date().toISOString() },
+        ];
+      });
+      track('settlement_confirmed', { count: (state.settings.payments || []).length + 1 });
+    },
+    /** Desfaz a confirmação: remove o pagamento. */
+    undoPayment(id) {
+      mutate((s) => {
+        s.settings.payments = (s.settings.payments || []).filter((x) => x.id !== id);
       });
     },
     /* ---------- Documentos gerais da viagem (links) ---------- */

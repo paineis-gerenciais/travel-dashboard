@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { money, num, fmtDate } from '../../domain/format.js';
-import { allPlanningDates } from '../../domain/dates.js';
+import { allPlanningDates, dataLocalDeIso } from '../../domain/dates.js';
 import {
   totals, costRowsByView, expenseStatusTotals, paidPct, palette,
   dayLodging, dayFood, dayAttractions, dayTransport, dayOther, dayTotal,
@@ -15,7 +15,7 @@ import MoneyInput from '../MoneyInput.jsx';
 import PaymentFields, { pct2 } from '../PaymentFields.jsx';
 import {
   splitSummary, settlements, participants, allCostRows, rowsForParticipant,
-  withSettlementStatus,
+  paymentsList, allSettled,
 } from '../../domain/split.js';
 import { track } from '../../lib/analytics.js';
 
@@ -252,8 +252,9 @@ function SplitSheet({ onClose }) {
   const [editandoLinha, setEditandoLinha] = useState(null); // {kind, id}
 
   const resumo = splitSummary(state);
-  const acertos = withSettlementStatus(state, settlements(resumo));
-  const pendentes = acertos.filter((a) => !a.confirmado).length;
+  const acertos = settlements(resumo);
+  const pagos = paymentsList(state);
+  const nomeDe = (id) => resumo.people.find((p) => p.id === id)?.name || '—';
 
   return (
     <Sheet title="Divisão de despesas" onClose={onClose}>
@@ -287,7 +288,7 @@ function SplitSheet({ onClose }) {
               <Row
                 icon="👤"
                 title={r.name}
-                sub={`Pagou ${money(r.paid)} · deve ${money(r.owed)}`}
+                sub={`Pagou ${money(r.paid)} · deve ${money(r.owed)}${r.settled ? ` · acertos ${r.settled > 0 ? '+' : '−'}${money(Math.abs(r.settled))}` : ''}`}
                 value={
                   <span className="num" style={{ color: r.balance >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
                     {r.balance >= 0 ? '+' : ''}{money(r.balance)}
@@ -323,38 +324,58 @@ function SplitSheet({ onClose }) {
         <div className="row-between">
           <h3 style={{ margin: 0 }}>Acerto</h3>
           {acertos.length > 0 && (
-            <span className="tiny t3">
-              {pendentes === 0 ? 'tudo acertado' : `${pendentes} pendente${pendentes > 1 ? 's' : ''}`}
-            </span>
+            <span className="tiny t3">{acertos.length} pendente{acertos.length > 1 ? 's' : ''}</span>
           )}
         </div>
         {acertos.length === 0 ? (
-          <p className="small t2" style={{ margin: 0 }}>Ninguém deve nada a ninguém.</p>
+          allSettled(resumo) ? (
+            <p className="small t2" style={{ margin: 0 }}>Ninguém deve nada a ninguém.</p>
+          ) : (
+            <p className="small t2" style={{ margin: 0 }}>
+              Há despesa sem pagador definido
+              {resumo.unassignedItems.length > 0
+                ? `: ${resumo.unassignedItems.map((u) => `${u.rotulo} (${money(u.valor)})`).join(', ')}`
+                : ''}
+              . Defina quem pagou para fechar o acerto.
+            </p>
+          )
         ) : (
           <div className="card card-flush">
             {acertos.map((a) => (
               <Row
-                key={a.key}
-                icon={a.confirmado ? '✅' : '➡️'}
+                key={`${a.fromId}>${a.toId}`}
+                icon="➡️"
                 title={`${a.from} paga para ${a.to}`}
-                sub={a.confirmado ? 'Acerto confirmado' : 'Aguardando confirmação'}
-                value={<span className="num" style={{ color: a.confirmado ? 'var(--text-3)' : 'var(--text)' }}>{money(a.valor)}</span>}
+                sub="Aguardando confirmação"
+                value={<span className="num">{money(a.valor)}</span>}
               >
-                <button
-                  className={a.confirmado ? 'btn-ghost btn-sm' : 'btn-sm'}
-                  aria-pressed={a.confirmado}
-                  onClick={() => actions.toggleSettlementDone(a.key, !a.confirmado)}
-                >
-                  {a.confirmado ? 'Desfazer' : '✓ Confirmar pagamento'}
+                <button className="btn-sm" onClick={() => actions.confirmSettlement(a)}>
+                  ✓ Confirmar pagamento
                 </button>
               </Row>
             ))}
           </div>
         )}
-        {acertos.some((a) => a.confirmado) && (
-          <p className="tiny t3" style={{ margin: 0 }}>
-            Se novas despesas mudarem o valor devido, o acerto volta a aparecer como pendente.
-          </p>
+
+        {pagos.length > 0 && (
+          <>
+            <h3 style={{ margin: 0 }}>Pagamentos feitos</h3>
+            <div className="card card-flush">
+              {pagos.map((pg) => (
+                <Row
+                  key={pg.id}
+                  icon="✅"
+                  title={`${nomeDe(pg.de)} pagou a ${nomeDe(pg.para)}`}
+                  sub={dataLocalDeIso(pg.data) ? fmtDate(dataLocalDeIso(pg.data)) : 'Pagamento confirmado'}
+                  value={<span className="num" style={{ color: 'var(--text-3)' }}>{money(pg.valor)}</span>}
+                >
+                  <button className="btn-ghost btn-sm" onClick={() => actions.undoPayment(pg.id)}>
+                    Desfazer
+                  </button>
+                </Row>
+              ))}
+            </div>
+          </>
         )}
 
         <div className="sheet-footer stack-2">
