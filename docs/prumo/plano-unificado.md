@@ -125,13 +125,13 @@ Critérios de aceite e verificação de cada uma estão no corpo da issue. Regra
 
 ### IA pelo Claude Code (pode começar em paralelo ao H1)
 
-Não mexe no app: usa a exportação e a importação por planilha que já existem (`src/domain/sheet.js`: insere e atualiza, nunca apaga; prévia antes de aplicar).
+Usa a exportação e a importação por planilha que já existem (`src/domain/sheet.js`: insere e atualiza, nunca apaga; prévia antes de aplicar). Ajuste de 2026-11-10 (issue #41): a skill gera também um JSON com as mesmas abas e colunas, e "Importar planilha" passa a aceitá-lo pela mesma prévia; "Importar JSON" (substituir) recusa esse arquivo.
 1. **Skill `roteiro-viagem`** em `.claude/skills/` do repositório: regras de pesquisa (fontes oficiais, preço sempre como estimativa com data e link, status "Planejado"), leitura da planilha exportada da viagem, geração do arquivo `.xlsx` ou do texto para "Colar", e um script que valida a saída com a própria `validarAba` do app antes de você importar. P a M (1 a 2 dias).
 2. **Agente `pesquisador-destino`** em `.claude/agents/`, só se a pesquisa por várias cidades ganhar com paralelismo. P.
 3. **Dados pessoais fora do repositório público:** a planilha da viagem e o arquivo gerado ficam só na sessão ou no seu computador, nunca em commit.
 4. **Custo:** com o Claude Code pela assinatura (Pro ou Max), não há cobrança por chamada; o uso consome os limites da assinatura. Se o Claude Code estiver ligado a uma conta da API, a cobrança é por token, como na estimativa da seção 12.
 
-Issue própria, a criar quando você autorizar.
+Issue própria: #41, criada em 2026-11-10 com autorização do dono.
 
 ## 6. Horizonte 3: só com critério de entrada
 
@@ -156,7 +156,7 @@ Issue própria, a criar quando você autorizar.
 - **D5. Leitura de planilha:** (a) SheetJS pelo CDN oficial, 0.20.2 ou mais nova, versão confirmada na fonte no dia.
 - **D6. Licença:** (a) MIT. Qualquer pessoa pode usar, alterar e vender cópias, mantendo o aviso de autoria; sem garantia.
 - **D7. Centavo na divisão:** (a) maior resto determinístico; a soma sempre fecha.
-- **D8. IA:** skill e agentes no Claude Code, com importação pela planilha. A IA dentro do app foi para o H3, com critério.
+- **D8. IA:** skill e agentes no Claude Code, com importação pela planilha. A IA dentro do app foi para o H3, com critério. **Ajuste de 2026-11-10:** a skill gera JSON e planilha `.xlsx`; o app passa a aceitar o JSON na mesma prévia e mesclagem da planilha (issue #41).
 - **D9. Modelo de IA no app:** não se aplica enquanto a IA estiver no Claude Code.
 
 ## 8. Verificação por área (vai para o `CLAUDE.md` do produto)
@@ -185,7 +185,7 @@ Pedidas de novo no momento, uma a uma:
 6. Dar à conta de serviço do deploy o papel para publicar regras pelo CI; sem isso, a publicação das regras continua manual.
 7. Publicar as regras corrigidas em produção, junto com o front-end de I-02.
 8. Cada merge, um por vez, por PR.
-9. Criar a issue da skill de IA no Claude Code.
+9. Criar a issue da skill de IA no Claude Code. **Concedida em 2026-11-10: #41.**
 
 ## 10. O que só você pode conferir no Console do Firebase
 
@@ -207,7 +207,14 @@ Pedidas de novo no momento, uma a uma:
 - **Caminho escolhido (Claude Code):** pela assinatura do Claude, sem cobrança por chamada, dentro dos limites dela; por uma conta da API, cobrança por token.
 - **Referência para a IA dentro do app (H3):** estimativa de 2026-11-09 em `custos-ia/estimativa-custos-ia.md`, com a chave de cada pessoa. Valores centrais no Opus 5.5: R$ 0,06 por lançamento por frase, R$ 1,48 por dia de roteiro pesquisado, R$ 19,65 por viagem do organizador, R$ 75,44 por ano para um grupo de 4.
 
-## 13. Próximos passos
+## 13. Registro de 2026-11-10 (respostas do dono)
+
+- **G2 do ADR-0001 aprovado** com as opções recomendadas da seção 9: (1) viagem no formato antigo aberta sem internet fica somente leitura até conectar; (2) criar a cópia automática "antes da atualização"; (3) no mesmo campo do mesmo item, vale a última gravação, sem aviso. PR #40.
+- **Console do Firebase:** o dono confirmou que as regras publicadas hoje são as do repositório (`b5a3ce2`). A publicação das regras do PR #37 continua dependendo da autorização 7.
+- **Skill de IA:** D8 ajustada para JSON e planilha (#41).
+- **Backlog aberto com autorização:** #42 (membro não altera o e-mail exibido), #43 (excluir viagem apaga membros e convites) e #44 (emuladores com projeto `demo-*`).
+
+## 14. Próximos passos
 
 1. Rastro no repositório e PRs de documentação (I-01).
 2. Onda 1 em paralelo onde os arquivos não se cruzam: I-02, I-03, I-04 e I-07; depois I-05 e I-06.
