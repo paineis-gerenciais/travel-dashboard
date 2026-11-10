@@ -121,7 +121,7 @@ Critérios de aceite e verificação de cada uma estão no corpo da issue. Regra
 - Testes de componente (`Sheet`, `TripProvider`, `StatusChip`) com `@testing-library/react`; cobertura com limite mínimo; E2E de acessibilidade com axe e projeto de tablet.
 - Interface: ícones SVG copiados de Lucide ou Phosphor (D4), alvos de 44 px, estados de erro, carregando e pressionado, `Row` clicável por inteiro; Mais em Viagem, Exportar, Conta e Avançado (Diagnóstico e JSON em Avançado); relatórios de Custos levando ao item em Dias.
 - Operação: presença a 60 s e pausada em aba oculta; `limit` em atividade e comentários; listener único de comentários; remover o cache do Firestore no service worker; logout limpa dados locais; atualização do PWA sem recarregar durante a digitação.
-- Segurança e dados: validação de esquema e tamanho nas regras (resto de S-04); exclusão completa da viagem (S-06); SheetJS pelo CDN oficial (D5) e limite de 2 MB; importação sem zerar campos ausentes; Dependabot; ferramentas de desenvolvimento atualizadas num PR só.
+- Segurança e dados: validação de esquema e tamanho nas regras (resto de S-04); exclusão completa da viagem (S-06); SheetJS pelo CDN oficial (D5) e limite de 2 MB; importação sem zerar campos ausentes (**adiantado no PR #45**, issue #41, junto com o limite de 2 MB para JSON); Dependabot; ferramentas de desenvolvimento atualizadas num PR só.
 
 ### IA pelo Claude Code (pode começar em paralelo ao H1)
 
@@ -213,6 +213,7 @@ Pedidas de novo no momento, uma a uma:
 - **Console do Firebase:** o dono confirmou que as regras publicadas hoje são as do repositório (`b5a3ce2`). A publicação das regras do PR #37 continua dependendo da autorização 7.
 - **Skill de IA:** D8 ajustada para JSON e planilha (#41).
 - **Backlog aberto com autorização:** #42 (membro não altera o e-mail exibido), #43 (excluir viagem apaga membros e convites) e #44 (emuladores com projeto `demo-*`).
+- **Skill de IA (#41):** PR #45. Segurança aprovada com ressalvas; QA reprovou duas vezes (campos zerados na atualização parcial, pelo JSON e depois pela planilha do script) e aprovou com ressalvas depois das correções. Revisões em `docs/prumo/revisao-pr-45/` (no PR #45).
 
 ## 14. Próximos passos
 
