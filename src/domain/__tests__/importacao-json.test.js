@@ -17,7 +17,7 @@ describe('matrizesDeJson', () => {
       expect(v.erros).toEqual([]);
       contagem[kind] = v.itens.length;
     });
-        expect(contagem).toEqual({ cities: 2, transports: 1, attractions: 2, foodItems: 1, otherExpenses: 1, checklist: 1 });
+    expect(contagem).toEqual({ cities: 2, transports: 1, attractions: 2, foodItems: 1, otherExpenses: 1, checklist: 1 });
   });
 
   it('recusa formato, versão e abas inválidos', () => {

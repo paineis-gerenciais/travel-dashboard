@@ -2,7 +2,7 @@
 // Dados fictícios: e2e/fixtures/importacao-exemplo.json.
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -51,6 +51,41 @@ test.describe('importação por JSON', () => {
     await page.getByRole('button', { name: 'Cidades' }).click();
     await expect(page.getByText('Lisboa').first()).toBeVisible();
     await expect(page.getByText('Porto').first()).toBeVisible();
+
+    // Reimportar o mesmo arquivo: a prévia avisa que as linhas repetem itens da viagem.
+    await page.getByRole('button', { name: 'Mais' }).click();
+    await page.getByRole('button', { name: 'Abrir Planilha' }).click();
+    await expect(dialogo).toBeVisible();
+    await dialogo.locator('input[type="file"]').setInputFiles(FIXTURE);
+    await expect(dialogo.getByText(/8 linha\(s\) parecem repetir itens que já estão na viagem/)).toBeVisible();
+    await dialogo.getByRole('button', { name: 'Cancelar' }).click();
+  });
+
+  test('a prévia avisa sobre abas e colunas que o app não conhece', async ({ page }, testInfo) => {
+    const pasta = mkdtempSync(join(tmpdir(), `avisos-${testInfo.project.name}-`));
+    await criarViagem(page, 'Viagem JSON Avisos');
+    await page.getByRole('button', { name: 'Mais' }).click();
+    await page.getByRole('button', { name: 'Abrir Planilha' }).click();
+
+    const dialogo = page.getByRole('dialog', { name: 'Planilha' });
+    await expect(dialogo).toBeVisible();
+    const arquivo = join(pasta, 'avisos.json');
+    writeFileSync(arquivo, JSON.stringify({
+      formato: 'planilha-viagem',
+      versao: 1,
+      abas: {
+        cidades: [{ Cidade: 'Lisboa', CHECK_IN: '2030-06-10', check_out: '2030-06-13', hospedagm: 'Hotel fictício' }],
+        Hospedagem: [{ nome: 'aba que não existe' }],
+      },
+    }));
+    await dialogo.locator('input[type="file"]').setInputFiles(arquivo);
+
+    await expect(dialogo.getByRole('heading', { name: 'Conferência' })).toBeVisible();
+    await expect(dialogo.getByText('1 a criar · 0 a atualizar')).toBeVisible();
+    await expect(dialogo.getByText('Partes do arquivo foram ignoradas.')).toBeVisible();
+    await expect(dialogo.getByText(/Abas: Hospedagem\./)).toBeVisible();
+    await expect(dialogo.getByText(/cidades · hospedagm/)).toBeVisible();
+    rmSync(pasta, { recursive: true, force: true });
   });
 
   test('planilha gerada pelo script da skill é aceita pela mesma conferência', async ({ page }, testInfo) => {
