@@ -173,8 +173,43 @@ function compararComViagem(viagem, porKind) {
 
 /* ---------- Gravação ---------- */
 
+/**
+ * Prepara a aba da planilha sem apagar nada por engano. No JSON, coluna ausente
+ * numa linha é "não enviada" e não altera o item; na planilha, que tem um
+ * cabeçalho só, ela viraria célula vazia e o app a trataria como "enviada e
+ * vazia" (status volta a "Planejado", hospedagem some). Por isso a aba leva só
+ * id, obrigatórias e colunas com valor em alguma linha, e linha com id sem uma
+ * dessas colunas impede gerar a planilha.
+ */
+function abaSegura(kind, matriz) {
+  const def = ESQUEMA[kind];
+  const [cab, ...corpo] = matriz;
+  const usar = cab.map((col, i) => col === 'id'
+    || def.colunas.some((c) => c.col === col && c.obrigatorio)
+    || corpo.some((l) => l[i] !== undefined));
+  const iId = cab.indexOf('id');
+  const problemas = [];
+  corpo.forEach((l, n) => {
+    const id = l[iId];
+    if (id === undefined || id === null || String(id).trim() === '') return; // item novo: vazio = padrão
+    const faltam = cab.filter((col, i) => usar[i] && l[i] === undefined);
+    if (faltam.length) problemas.push(`${def.aba} · linha ${n + 2} (id "${id}"): sem ${faltam.map((c) => `"${c}"`).join(', ')}`);
+  });
+  const linhas = matriz.map((l) => l.filter((_, i) => usar[i]).map((v) => (v === undefined ? '' : v)));
+  return { linhas, problemas };
+}
+
 function gravarXlsx(destino, matrizes) {
   const alvo = conferirCaminho(destino, { leitura: false });
+  const abas = Object.keys(ESQUEMA).filter((kind) => matrizes[kind]).map((kind) => ({ kind, ...abaSegura(kind, matrizes[kind]) }));
+  const problemas = abas.flatMap((a) => a.problemas);
+  if (problemas.length) {
+    throw new Error([
+      'a planilha não foi gerada: nestas atualizações por id, colunas que vêm em outras linhas ficariam vazias e apagariam o valor atual no app:',
+      ...problemas.map((m) => `  ${m}`),
+      'O importacao.json está válido e não tem esse problema: importe o .json, ou mande essas colunas em todas as linhas com id.',
+    ].join('\n'));
+  }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     ['Gerado pela skill roteiro-viagem'],
@@ -182,10 +217,7 @@ function gravarXlsx(destino, matrizes) {
     ['Importe no app em Mais → Planilha → Enviar planilha preenchida. A importação cria e atualiza; nunca apaga.'],
     ['Preços são estimativas; fontes e datas estão no relatorio.md.'],
   ]), 'Leia-me');
-  Object.keys(ESQUEMA).forEach((kind) => {
-    if (!matrizes[kind]) return;
-    // célula ausente (undefined) vira vazia na planilha
-    const linhas = matrizes[kind].map((l) => l.map((v) => (v === undefined ? '' : v)));
+  abas.forEach(({ kind, linhas }) => {
     const ws = XLSX.utils.aoa_to_sheet(linhas);
     ws['!cols'] = linhas[0].map((h) => ({ wch: Math.max(12, String(h).length + 4) }));
     XLSX.utils.book_append_sheet(wb, ws, ESQUEMA[kind].aba);

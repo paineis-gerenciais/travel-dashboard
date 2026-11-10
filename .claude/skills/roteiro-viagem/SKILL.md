@@ -108,12 +108,13 @@ Com a exportação da viagem atual, acrescente `--viagem importacoes/<pasta>/<ex
 - O script usa a mesma validação da prévia do app. Saída `0` = pronto; `1` = erro (nada é gravado).
 - Corrija **todos** os erros e rode de novo. Trate os avisos: preencha o link ou o custo, ou explique no relatório por que ficaram vazios; troque linha duplicada por atualização com o `id` existente.
 - Dentro do repositório, a planilha só é gravada em `importacoes/`.
+- **Atualização de itens existentes (por `id`): entregue e importe o `.json`.** A planilha tem um cabeçalho só: ela leva só as colunas usadas e, se uma linha com `id` não trouxer uma coluna que outras linhas trazem, o script não gera a planilha, porque a célula vazia apagaria o valor atual no app.
 
 ## 7. Entregar
 
 Diga ao usuário, em linguagem simples:
 1. Onde estão os três arquivos: `importacao.json`, `importacao.xlsx` e `relatorio.md`.
-2. Como importar: no app, **Mais → Planilha → Enviar planilha preenchida**, escolha o `.json` ou o `.xlsx`, confira a prévia e toque em **Aplicar à viagem**.
+2. Como importar: no app, **Mais → Planilha → Enviar planilha preenchida**, escolha o `.json` (preferido, e obrigatório quando há atualização por `id`) ou o `.xlsx`, confira a prévia e toque em **Aplicar à viagem**.
 3. **Não use "Importar JSON"**: aquele botão substitui a viagem inteira (é para cópia de segurança) e recusa este arquivo.
 4. Quantos itens serão criados ou atualizados por aba, o total estimado em reais e os pontos não confirmados.
 5. Que a importação nunca apaga: para tirar um item sugerido, exclua no app.
