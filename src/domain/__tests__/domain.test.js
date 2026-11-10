@@ -859,18 +859,21 @@ describe('acerto com pagamentos e centavos', () => {
 });
 
 describe('migração settlementsDone -> payments', () => {
+  const desp = [{ id: 'a', date: '2026-08-08', name: 'X', cost: 66.66, status: 'Planejado', paidBy: 'p1' }];
   const antigo = () => ({
+    attractions: desp.map((x) => ({ ...x })),
     settings: {
       participants: [{ id: 'p1', name: 'Ana' }, { id: 'p2', name: 'Bruno' }],
       settlementsDone: [{ key: 'p2>p1>3333', at: '2026-11-05T12:00:00.000Z' }, { key: 'lixo' }],
     },
   });
 
-  it('converte a chave em pagamento com valor e data', () => {
+  it('converte a chave em pagamento com valor e data, sem esvaziar o legado', () => {
     const s = normalizeState(antigo());
     expect(s.settings.payments).toHaveLength(1);
-    expect(s.settings.payments[0]).toMatchObject({ de: 'p2', para: 'p1', valor: 33.33, data: '2026-11-05T12:00:00.000Z' });
-    expect(s.settings.settlementsDone).toEqual([]);
+    expect(s.settings.payments[0]).toMatchObject({ id: 'mig-p2>p1>3333', de: 'p2', para: 'p1', valor: 33.33, data: '2026-11-05T12:00:00.000Z' });
+    expect(s.settings.settlementsDone).toEqual(antigo().settings.settlementsDone);
+    expect(s.settings.paymentsMigrated).toBe(true);
   });
 
   it('é idempotente: rodar duas vezes não duplica', () => {
@@ -884,8 +887,15 @@ describe('migração settlementsDone -> payments', () => {
 
   it('o pagamento migrado abate o saldo', () => {
     const s = normalizeState({ ...antigo(), attractions: [{ id: 'a', date: '2026-08-08', name: 'X', cost: 100, status: 'Planejado', paidBy: 'p1' }] });
+    // chave 3333 bate com o acerto atual de 5000 só se a tolerância permitir; aqui não bate
+    expect(s.settings.payments).toEqual([]);
     const r = splitSummary(s);
-    expect(settlements(r).map((x) => x.cents)).toEqual([1667]);
+    expect(settlements(r).map((x) => x.cents)).toEqual([5000]);
+  });
+
+  it('viagem nova e viagem sem settlementsDone nascem com paymentsMigrated', () => {
+    expect(normalizeState({}).settings.paymentsMigrated).toBe(true);
+    expect(normalizeState({ settings: { participants: [] } }).settings.paymentsMigrated).toBe(true);
   });
 });
 

@@ -7,6 +7,7 @@
 
 import { num } from './format.js';
 import { isValidLink } from './links.js';
+import { splitSummary, settlements, allCostRows } from './split.js';
 export const STATUS_OPTIONS = ['Planejado', 'Reservado', 'Pago', 'Cancelado'];
 export const CHECKLIST_STATUS_OPTIONS = ['Pendente', 'Em andamento', 'Concluído', 'Cancelado'];
 export const PRIORITY_OPTIONS = ['Alta', 'Média', 'Baixa'];
@@ -52,9 +53,12 @@ export function blankState() {
       // Participantes da divisão de despesas: [{ id, name }].
       // Vazio = usa rótulos genéricos derivados de `travelers`.
       participants: [],
-      // LEGADO: acertos confirmados [{ key, at }]. Migrado para `payments` em
-      // normalizeState (ver migratePayments) e esvaziado; não usar.
+      // LEGADO, SOMENTE LEITURA: acertos confirmados [{ key, at }]. Convertido
+      // uma vez para `payments` (ver migratePayments) e mantido intacto, para
+      // o rollback e para abas antigas. Nada novo grava aqui.
       settlementsDone: [],
+      // Marca de que a conversão de `settlementsDone` já rodou nesta viagem.
+      paymentsMigrated: true,
       // Pagamentos de acerto já feitos: [{ id, de, para, valor, data }]
       // (`de` pagou `valor` reais a `para`; `data` ISO). Abatem o saldo.
       payments: [],
@@ -72,6 +76,10 @@ export function blankState() {
  */
 export function normalizeState(s) {
   const b = blankState();
+  // Viagem sem acertos legados não tem nada a converter. Com `settlementsDone`
+  // preenchido e sem a marca, a conversão ainda vai rodar.
+  const legado = Array.isArray(s?.settings?.settlementsDone) && s.settings.settlementsDone.length > 0;
+  const pendenteConverter = legado && !s.settings.paymentsMigrated;
   s = { ...b, ...s, settings: { ...b.settings, ...(s?.settings || {}) } };
   ['cities', 'transports', 'foodItems', 'attractions', 'otherExpenses', 'checklist'].forEach(
     (k) => {
@@ -79,6 +87,7 @@ export function normalizeState(s) {
     }
   );
   migrateParticipants(s);
+  s.settings.paymentsMigrated = !pendenteConverter;
   migratePayments(s);
   // Documentos gerais da viagem: só links https válidos chegam à tela. Um link
   // `javascript:` gravado direto no banco ou vindo de um JSON importado seria
@@ -143,26 +152,36 @@ export function migrateParticipants(s) {
 }
 
 /**
- * Migração de `settlementsDone` (chave `de>para>centavos`, com `at`) para
- * `payments` ({ id, de, para, valor, data }). Idempotente: o id do pagamento
- * migrado é derivado da chave e da data, então repetir não duplica; depois de
- * migrar, `settlementsDone` fica vazio.
+ * Conversão única de `settlementsDone` (chave `de>para>centavos`, com `at`)
+ * para `payments` ({ id, de, para, valor, data }).
+ *
+ * No modelo antigo, confirmar só marcava a transferência atual, sem abater
+ * saldo, e chaves vencidas ficavam na lista. Por isso só viram pagamento as
+ * chaves que batem com o acerto ATUAL (calculado uma vez, a mais recente
+ * primeiro), com tolerância de 1 centavo por despesa (float x maior resto).
+ * O valor do pagamento é o do acerto novo. `settlementsDone` fica intacto
+ * (rollback e abas antigas) e `settings.paymentsMigrated` impede repetir a
+ * conversão, para que "Desfazer" não seja desfeito na releitura.
  */
 export function migratePayments(s) {
   const atuais = Array.isArray(s.settings.payments) ? s.settings.payments.filter((x) => x && x.id) : [];
+  s.settings.payments = atuais;
+  if (s.settings.paymentsMigrated) return;
+  const antigos = (Array.isArray(s.settings.settlementsDone) ? s.settings.settlementsDone : [])
+    .filter((x) => /^[^>]+>[^>]+>\d+$/.test(String(x?.key || '')))
+    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  const tol = Math.max(1, allCostRows(s).length);
+  const livres = settlements(splitSummary(s));
   const ids = new Set(atuais.map((x) => x.id));
-  const antigos = Array.isArray(s.settings.settlementsDone) ? s.settings.settlementsDone : [];
   antigos.forEach((x) => {
-    const partes = String(x?.key || '').split('>');
-    if (partes.length !== 3) return;
-    const [de, para, cents] = partes;
-    const c = Number(cents);
-    if (!de || !para || de === para || !Number.isInteger(c) || c <= 0) return;
-    const id = `mig-${x.key}-${x.at || ''}`;
+    const [de, para, cents] = x.key.split('>');
+    const k = livres.findIndex((a) => a.fromId === de && a.toId === para && Math.abs(a.cents - Number(cents)) <= tol);
+    if (k < 0) return; // confirmação vencida: a tela antiga já a mostrava como pendente
+    const [a] = livres.splice(k, 1);
+    const id = `mig-${x.key}`;
     if (ids.has(id)) return;
     ids.add(id);
-    atuais.push({ id, de, para, valor: c / 100, data: x.at || '' });
+    atuais.push({ id, de, para, valor: a.cents / 100, data: x.at || '' });
   });
-  s.settings.payments = atuais;
-  s.settings.settlementsDone = [];
+  s.settings.paymentsMigrated = true;
 }
