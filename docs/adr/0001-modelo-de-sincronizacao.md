@@ -1,7 +1,7 @@
 # ADR 0001: Sincronização da viagem por campo, com itens em mapas por id (`schemaVersion: 2`)
 
 - **Data:** 2026-11-10 · **Demanda:** #26 · **Responsável:** software-architect
-- **Situação:** proposta (aguarda G2). Opção O1 escolhida pelo dono do produto em 2026-11-09; este ADR detalha a decisão para implementação.
+- **Situação:** **aprovada** (G2) pelo dono do produto em 2026-11-10, com as opções recomendadas da seção 9. Opção O1 escolhida em 2026-11-09; este ADR detalha a decisão para implementação.
 - **Base:** `travel-dashboard`, branch `main`, commit `b5a3ce2`; parecer de arquitetura de 2026-11-09 (seção 4.3, opções O0 a O4; seção 10, ADR proposto). Pressuposto: a issue #25 (ações por id, sem índice) já está implementada quando este ADR for executado.
 - **Rótulos:** `[FATO]` com `caminho:linha` ou fonte; `[HIPÓTESE]` depende de execução ou de fonte não consultada; `[RECOMENDAÇÃO]` decisão sugerida.
 
@@ -383,7 +383,9 @@ function shapeUnchangedOrOk() {
 
 ---
 
-## 9. Perguntas em aberto para o dono do produto
+## 9. Perguntas para o dono do produto
+
+> **Respostas (2026-11-10):** 1 (a), 2 (a) e 3 (a), as recomendadas. O ADR está aprovado.
 
 1. **Viagem ainda no formato antigo, aberta sem internet:**
    - **(a) recomendada:** somente leitura até conectar uma vez. Sem risco de perda; acontece só na primeira abertura após a atualização.
