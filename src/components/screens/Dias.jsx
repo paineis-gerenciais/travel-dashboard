@@ -49,7 +49,7 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
   // acontece quando os dias realmente aparecem, uma vez por viagem.
   const [idx, setIdx] = useState(0);
   const jaPosicionou = useRef(false);
-  const [editing, setEditing] = useState(null); // {kind, index}
+  const [editing, setEditing] = useState(null); // {kind, id}
   const [highlightId, setHighlightId] = useState(null); // T-1.16: item destacado ao vir de Mensagens
   const coverage = useMemo(() => validateCityCoverage(state), [state]);
   const cardRef = useRef(null);
@@ -186,16 +186,15 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
 
   const city = cityForDate(state, date);
 
-  // T-1.14: criar o item E abrir o editor dele direto. As ações do store fazem
-  // push no fim do array, então o índice do novo item é o tamanho atual — lido
-  // ANTES da mutação para não depender da ordem de atualização do estado.
+  // T-1.14: criar o item E abrir o editor dele direto. As ações de criar
+  // devolvem o id do item novo; a folha guarda o id, não a posição.
   const addAndEdit = (kind) => {
-    const index = state[kind].length;
-    if (kind === 'transports') actions.addTransport(date);
-    else if (kind === 'foodItems') actions.addFoodItem(date, city);
-    else if (kind === 'attractions') actions.addAttraction(date, city);
-    else actions.addOther(date, city);
-    setEditing({ kind, index });
+    let id;
+    if (kind === 'transports') id = actions.addTransport(date);
+    else if (kind === 'foodItems') id = actions.addFoodItem(date, city);
+    else if (kind === 'attractions') id = actions.addAttraction(date, city);
+    else id = actions.addOther(date, city);
+    setEditing({ kind, id });
     track('day_item_added', { kind });
   };
   const cityClass = cityColorClass(flow.to && flow.to !== HOME ? flow.to : city);
@@ -254,7 +253,6 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
             )}
 
             {timeline.map(({ kind, item: x }) => {
-              const r = state[kind].indexOf(x);
               if (kind === 'transports') {
                 const dur = getTransportDurationMinutes(x);
                 return (
@@ -267,8 +265,8 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                     sub={`${getTransportOrigin(x) || '—'} → ${getTransportDest(x) || '—'}`}
                     value={<span className="num">{money(num(x.cost))}</span>}
                   >
-                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', r, 'status', v)} />
-                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'transports', index: r })}>Editar</button>
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('transports', x.id, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'transports', id: x.id })}>Editar</button>
                     <LinkChip item={x} />
                     <CommentThread tripId={tripId} itemKey={`transports:${x.id}`} />
                   </Row>
@@ -287,8 +285,8 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                       : (x.place || 'Sem local')}
                     value={<span className="num">{money(num(x.cost))}</span>}
                   >
-                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', r, 'status', v)} />
-                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'foodItems', index: r })}>Editar</button>
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', x.id, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'foodItems', id: x.id })}>Editar</button>
                     <LinkChip item={x} />
                     <CommentThread tripId={tripId} itemKey={`foodItems:${x.id}`} />
                   </Row>
@@ -305,8 +303,8 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                     sub={x.time ? `${x.time} · ${x.period}` : x.period}
                     value={<span className="num">{money(num(x.cost))}</span>}
                   >
-                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', r, 'status', v)} />
-                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'attractions', index: r })}>Editar</button>
+                    <StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', x.id, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'attractions', id: x.id })}>Editar</button>
                     <LinkChip item={x} />
                     <CommentThread tripId={tripId} itemKey={`attractions:${x.id}`} />
                   </Row>
@@ -322,8 +320,8 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
                   sub={x.city}
                   value={<span className="num">{money(num(x.cost))}</span>}
                 >
-                  <StatusChip value={x.status} onChange={(v) => actions.updateItem('otherExpenses', r, 'status', v)} />
-                  <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'otherExpenses', index: r })}>Editar</button>
+                  <StatusChip value={x.status} onChange={(v) => actions.updateItem('otherExpenses', x.id, 'status', v)} />
+                  <button className="btn-ghost btn-sm" onClick={() => setEditing({ kind: 'otherExpenses', id: x.id })}>Editar</button>
                   <LinkChip item={x} />
                 </Row>
               );
@@ -350,10 +348,10 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
 
       </div>
 
-      {editing && (
+      {editing && state[editing.kind]?.some((x) => x.id === editing.id) && (
         <ItemSheet
           kind={editing.kind}
-          index={editing.index}
+          id={editing.id}
           date={date}
           onClose={() => setEditing(null)}
         />
@@ -363,12 +361,12 @@ export default function Dias({ tripId, onNavigate, target, onTargetHandled }) {
 }
 
 /* Folha de edição de um item — o formulário completo mora aqui, fora da lista. */
-function ItemSheet({ kind, index, onClose }) {
+function ItemSheet({ kind, id, onClose }) {
   const { state, actions } = useTrip();
-  const item = state[kind]?.[index];
+  const item = state[kind]?.find((x) => x.id === id);
   if (!item) return null;
-  const set = (key, value) => actions.updateItem(kind, index, key, value);
-  const remove = () => { actions.deleteItem(kind, index); onClose(); };
+  const set = (key, value) => actions.updateItem(kind, id, key, value);
+  const remove = () => { actions.deleteItem(kind, id); onClose(); };
 
   // Títulos com verbo: além de mais claros, evitam que o nome acessível do
   // diálogo colida com o do campo homônimo dentro dele.

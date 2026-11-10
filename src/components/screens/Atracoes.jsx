@@ -44,7 +44,6 @@ export default function Atracoes() {
               const arr = grouped[date];
               const total = arr.reduce((s, x) => s + activeCost(x), 0);
               return arr.map((x, idx) => {
-                const i = state.attractions.indexOf(x);
                 return (
                   <tr className={statusRowClass(x)} key={x.id}>
                     {idx === 0 && (
@@ -56,13 +55,13 @@ export default function Atracoes() {
                         <td data-label="Cidade" rowSpan={arr.length}>{x.city}</td>
                       </>
                     )}
-                    <td data-label="Horário"><input type="time" value={x.time || ''} onChange={(e) => actions.updateItem('attractions', i, 'time', e.target.value)} /></td>
+                    <td data-label="Horário"><input type="time" value={x.time || ''} onChange={(e) => actions.updateItem('attractions', x.id, 'time', e.target.value)} /></td>
                     <td data-label="Período"><span className="badge">{periodByTime(x.time)}</span></td>
-                    <td data-label="Nome"><input value={x.name || ''} onChange={(e) => actions.updateItem('attractions', i, 'name', e.target.value)} /></td>
-                    <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('attractions', i, 'cost', v)} /></td>
-                    <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', i, 'status', v)} /></td>
+                    <td data-label="Nome"><input value={x.name || ''} onChange={(e) => actions.updateItem('attractions', x.id, 'name', e.target.value)} /></td>
+                    <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('attractions', x.id, 'cost', v)} /></td>
+                    <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('attractions', x.id, 'status', v)} /></td>
                     {idx === 0 && <td data-label="Total do dia" rowSpan={arr.length} className="total-cell">{money(total)}</td>}
-                    <td><button className="small-btn danger" onClick={() => actions.deleteItem('attractions', i)}>Excluir</button></td>
+                    <td><button className="small-btn danger" onClick={() => actions.deleteItem('attractions', x.id)}>Excluir</button></td>
                   </tr>
                 );
               });

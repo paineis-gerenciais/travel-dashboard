@@ -81,7 +81,6 @@ export default function Alimentacao() {
               }
 
               return arr.map((x, idx) => {
-                const i = state.foodItems.indexOf(x);
                 return (
                   <tr className={statusRowClass(x)} key={x.id}>
                     {idx === 0 && (
@@ -93,12 +92,12 @@ export default function Alimentacao() {
                         <td data-label="Cidade" rowSpan={arr.length}>{x.city}</td>
                       </>
                     )}
-                    <td data-label="Tipo"><input value={x.type} onChange={(e) => actions.updateItem('foodItems', i, 'type', e.target.value)} /></td>
-                    <td data-label="Restaurante/local"><input value={x.place || ''} onChange={(e) => actions.updateItem('foodItems', i, 'place', e.target.value)} /></td>
-                    <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('foodItems', i, 'cost', v)} /></td>
-                    <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', i, 'status', v)} /></td>
+                    <td data-label="Tipo"><input value={x.type} onChange={(e) => actions.updateItem('foodItems', x.id, 'type', e.target.value)} /></td>
+                    <td data-label="Restaurante/local"><input value={x.place || ''} onChange={(e) => actions.updateItem('foodItems', x.id, 'place', e.target.value)} /></td>
+                    <td data-label="Custo"><MoneyInput value={num(x.cost)} onChange={(v) => actions.updateItem('foodItems', x.id, 'cost', v)} /></td>
+                    <td data-label="Status"><StatusChip value={x.status} onChange={(v) => actions.updateItem('foodItems', x.id, 'status', v)} /></td>
                     {idx === 0 && <td data-label="Total do dia" rowSpan={arr.length} className="total-cell">{money(total)}</td>}
-                    <td><button className="small-btn danger" onClick={() => actions.deleteItem('foodItems', i)}>Excluir</button></td>
+                    <td><button className="small-btn danger" onClick={() => actions.deleteItem('foodItems', x.id)}>Excluir</button></td>
                   </tr>
                 );
               });

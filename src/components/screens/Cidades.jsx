@@ -15,10 +15,11 @@ export default function Cidades() {
   const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
   const coverage = useMemo(() => validateCityCoverage(state), [state]);
+  const confirmCity = confirmDel != null ? state.cities.find((x) => x.id === confirmDel) : null;
   const t = totals(state);
   const nights = state.cities.reduce((s, c) => s + daysBetween(c.start, c.end), 0);
 
-  const add = () => { actions.addCity(); setEditing(state.cities.length); };
+  const add = () => { setEditing(actions.addCity()); };
 
   return (
     <div className="screen">
@@ -55,7 +56,7 @@ export default function Cidades() {
         ) : (
           <>
             <div className="card card-flush">
-              {state.cities.map((c, i) => {
+              {state.cities.map((c) => {
                 const n = daysBetween(c.start, c.end);
                 const cc = cityColorClass(c.city);
                 return (
@@ -71,8 +72,8 @@ export default function Cidades() {
                     }
                     value={<span className="num">{money(n * num(c.nightly))}</span>}
                   >
-                    <StatusChip value={c.status} onChange={(v) => actions.setCityField(i, 'status', v)} />
-                    <button className="btn-ghost btn-sm" onClick={() => setEditing(i)}>Editar</button>
+                    <StatusChip value={c.status} onChange={(v) => actions.setCityField(c.id, 'status', v)} />
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing(c.id)}>Editar</button>
                   </Row>
                 );
               })}
@@ -82,18 +83,18 @@ export default function Cidades() {
         )}
       </div>
 
-      {editing != null && state.cities[editing] && (
+      {editing != null && state.cities.some((x) => x.id === editing) && (
         <CitySheet
-          index={editing}
+          id={editing}
           onClose={() => setEditing(null)}
           onDelete={() => { setConfirmDel(editing); setEditing(null); }}
         />
       )}
 
-      {confirmDel != null && state.cities[confirmDel] && (
+      {confirmCity && (
         <Sheet title="Excluir cidade" onClose={() => setConfirmDel(null)}>
           <p>
-            Excluir <b>{state.cities[confirmDel].city || 'esta cidade'}</b>. Os itens ligados a ela
+            Excluir <b>{confirmCity.city || 'esta cidade'}</b>. Os itens ligados a ela
             (refeições, atrações, transportes no período) podem ser removidos junto.
           </p>
           <div className="stack-2">
@@ -111,9 +112,9 @@ export default function Cidades() {
   );
 }
 
-function CitySheet({ index, onClose, onDelete }) {
+function CitySheet({ id, onClose, onDelete }) {
   const { state, actions } = useTrip();
-  const c = state.cities[index];
+  const c = state.cities.find((x) => x.id === id);
   const [dateError, setDateError] = useState('');
   if (!c) return null;
 
@@ -122,16 +123,16 @@ function CitySheet({ index, onClose, onDelete }) {
       <div className="stack">
         <div className="grid-2">
           <Field label="Cidade">
-            <input value={c.city || ''} onChange={(e) => actions.setCityField(index, 'city', e.target.value)} />
+            <input value={c.city || ''} onChange={(e) => actions.setCityField(id, 'city', e.target.value)} />
           </Field>
           <Field label="Emoji">
-            <input value={c.emoji || ''} maxLength={4} onChange={(e) => actions.setCityField(index, 'emoji', e.target.value)} />
+            <input value={c.emoji || ''} maxLength={4} onChange={(e) => actions.setCityField(id, 'emoji', e.target.value)} />
           </Field>
         </div>
 
         <div className="grid-2">
           <Field label="Check-in">
-            <input type="date" value={c.start || ''} onChange={(e) => { setDateError(''); actions.setCityStart(index, e.target.value); }} />
+            <input type="date" value={c.start || ''} onChange={(e) => { setDateError(''); actions.setCityStart(id, e.target.value); }} />
           </Field>
           <Field label="Check-out">
             <input
@@ -139,7 +140,7 @@ function CitySheet({ index, onClose, onDelete }) {
               value={c.end || ''}
               aria-describedby={dateError ? 'city-date-error' : undefined}
               onChange={(e) => {
-                const ok = actions.setCityEnd(index, e.target.value);
+                const ok = actions.setCityEnd(id, e.target.value);
                 setDateError(ok ? '' : 'O check-out precisa ser depois do check-in.');
               }}
             />
@@ -148,14 +149,14 @@ function CitySheet({ index, onClose, onDelete }) {
         {dateError && <p id="city-date-error" className="small" style={{ color: 'var(--danger)' }}>{dateError}</p>}
 
         <Field label="Hospedagem">
-          <input value={c.hotel || ''} onChange={(e) => actions.setCityField(index, 'hotel', e.target.value)} />
+          <input value={c.hotel || ''} onChange={(e) => actions.setCityField(id, 'hotel', e.target.value)} />
         </Field>
 
         <label className="row" style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-1)', padding: 'var(--sp-3)' }}>
           <input
             type="checkbox"
             checked={!!c.breakfastIncluded}
-            onChange={(e) => actions.setCityField(index, 'breakfastIncluded', e.target.checked)}
+            onChange={(e) => actions.setCityField(id, 'breakfastIncluded', e.target.checked)}
           />
           <span className="row-main">
             <span className="row-title">Café da manhã incluso</span>
@@ -164,25 +165,25 @@ function CitySheet({ index, onClose, onDelete }) {
         </label>
 
         <Field label="Custo por diária">
-          <MoneyInput value={num(c.nightly)} onChange={(v) => actions.setCityField(index, 'nightly', v)} className="input-money" />
+          <MoneyInput value={num(c.nightly)} onChange={(v) => actions.setCityField(id, 'nightly', v)} className="input-money" />
         </Field>
 
         {/* Item 5: a hospedagem também aceita pagador e rateio */}
         <PaymentFields
           item={c}
           valor={diasEntre(c.start, c.end) * num(c.nightly)}
-          onChange={(key, value) => actions.setCityField(index, key, value)}
+          onChange={(key, value) => actions.setCityField(id, key, value)}
         />
 
         <div className="field">
           <span>Status</span>
-          <div><StatusChip value={c.status} onChange={(v) => actions.setCityField(index, 'status', v)} /></div>
+          <div><StatusChip value={c.status} onChange={(v) => actions.setCityField(id, 'status', v)} /></div>
         </div>
 
-        <LinkField link={c.link} onChange={(key, value) => actions.setCityField(index, key, value)} />
+        <LinkField link={c.link} onChange={(key, value) => actions.setCityField(id, key, value)} />
 
         <Field label="Notas">
-          <textarea value={c.notes || ''} onChange={(e) => actions.setCityField(index, 'notes', e.target.value)} />
+          <textarea value={c.notes || ''} onChange={(e) => actions.setCityField(id, 'notes', e.target.value)} />
         </Field>
 
         <div className="sheet-footer stack-2">

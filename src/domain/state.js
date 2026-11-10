@@ -73,6 +73,25 @@ export function normalizeState(s) {
   ['cities', 'transports', 'foodItems', 'attractions', 'otherExpenses', 'checklist'].forEach(
     (k) => {
       if (!Array.isArray(s[k])) s[k] = [];
+      // As ações do store localizam itens por id (issue #25). Item legado sem id
+      // ganha um id ESTÁVEL, derivado do conteúdo e da posição: todos os
+      // clientes chegam ao mesmo id para o mesmo dado, e ele fica gravado na
+      // próxima edição.
+      // Id repetido no mesmo tipo: a 1ª ocorrência mantém o id; da 2ª em diante
+      // recebe um id novo determinístico (deleteItem apagaria todas as cópias).
+      const vistos = new Set(s[k].map((x) => (x && typeof x === 'object' && x.id ? String(x.id) : null)).filter(Boolean));
+      const usados = new Set();
+      s[k] = s[k].map((x, i) => {
+        if (!x || typeof x !== 'object') return x;
+        if (x.id && !usados.has(String(x.id))) {
+          usados.add(String(x.id));
+          return x;
+        }
+        let id = idLegado(k, x, i);
+        for (let n = 1; vistos.has(id) || usados.has(id); n += 1) id = `${idLegado(k, x, i)}-${n}`;
+        usados.add(id);
+        return { ...x, id };
+      });
     }
   );
   migrateParticipants(s);
@@ -82,6 +101,23 @@ export function normalizeState(s) {
   s.settings.documents = (Array.isArray(s.settings.documents) ? s.settings.documents : [])
     .filter((d) => d && isValidLink(d.url));
   return s;
+}
+
+/** JSON com as chaves ordenadas (recursivo): o hash não depende da ordem das chaves. */
+function serializaOrdenado(v) {
+  if (Array.isArray(v)) return `[${v.map(serializaOrdenado).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v).sort().filter((k) => v[k] !== undefined).map((k) => `${JSON.stringify(k)}:${serializaOrdenado(v[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'null';
+}
+
+/** Id determinístico para item legado sem id (mesmo dado, mesmo id). */
+export function idLegado(kind, item, index) {
+  const texto = `${kind}|${index}|${serializaOrdenado(item)}`;
+  let h = 0;
+  for (let i = 0; i < texto.length; i += 1) h = (h * 31 + texto.charCodeAt(i)) >>> 0;
+  return `l${h.toString(36)}${index.toString(36)}`;
 }
 
 /**
