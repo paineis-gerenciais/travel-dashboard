@@ -23,4 +23,6 @@ Rastro das revisões cruzadas da skill `roteiro-viagem` e da importação de JSO
 
 Os caminhos `<raiz-do-repositório>` e `<pasta-temporária-da-sessão>` substituem os caminhos absolutos da sessão em que as revisões rodaram. Para reexecutar um script, troque o prefixo pela raiz do seu clone.
 
-**Incidente de processo:** durante a revisão de segurança, a limpeza apagou a pasta de trabalho do QA, que rodava em paralelo no mesmo worktree (`importacoes/qa/`). Nenhum arquivo versionado foi afetado, e o QA refez as execuções. Lição: cada delegação paralela recebe uma pasta fora de áreas compartilhadas.
+**Incidente de processo:** durante a revisão de segurança, a limpeza apagou a pasta de trabalho do QA, que rodava em paralelo no mesmo worktree (`importacoes/qa/`). Nenhum arquivo versionado foi afetado, e o QA refez as execuções. Lição: cada delegação paralela recebe uma pasta fora de áreas compartilhadas. Registrado no kit em paineis-gerenciais/prumo#13.
+
+Ressalvas baixas que ficaram para depois: issue #46.
