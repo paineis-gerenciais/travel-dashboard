@@ -1,0 +1,22 @@
+const { readFileSync } = require('fs'); const path = require('path');
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, setDoc, updateDoc, writeBatch, arrayUnion, arrayRemove, serverTimestamp } = require('firebase/firestore');
+(async () => {
+  const env = await initializeTestEnvironment({ projectId: 'demo-rev37-v2q', firestore: { host: '127.0.0.1', port: 8282, rules: readFileSync(path.join(__dirname, 'firestore.v2.rules'), 'utf8') } });
+  const seed = async () => { await env.clearFirestore(); await env.withSecurityRulesDisabled(async (a) => { const db = a.firestore();
+    await setDoc(doc(db, 'trips', 'trip1'), { ownerId: 'uid_dono', memberUids: ['uid_dono'] });
+    await setDoc(doc(db, 'convites', 'trip1_x@exemplo.com'), { tripId: 'trip1', emailConvidado: 'x@exemplo.com', ownerUid: 'uid_dono', status: 'pendente' }); }); };
+  const X = env.authenticatedContext('uid_x', { email: 'x@exemplo.com', email_verified: true }).firestore();
+  const D = env.authenticatedContext('uid_dono', { email: 'dono@exemplo.com', email_verified: true }).firestore();
+  const run = async (id, fn) => { try { await fn(); console.log(id, 'PERMITIDO'); } catch (e) { console.log(id, /PERMISSION_DENIED/.test(String(e)) ? 'NEGADO' : 'ERRO ' + e.message); } };
+  const batchAceite = (uid) => { const b = writeBatch(X); b.update(doc(X, 'trips', 'trip1'), { memberUids: arrayUnion(uid) }); b.update(doc(X, 'convites', 'trip1_x@exemplo.com'), { status: 'aceito', acceptedByUid: uid, acceptedAt: serverTimestamp() }); return b.commit(); };
+  await seed();
+  await run('Q1 auto-inclusao sozinha (sem marcar convite) [esperado NEGADO]', () => updateDoc(doc(X, 'trips', 'trip1'), { memberUids: arrayUnion('uid_x') }));
+  await run('Q2 lote: auto-inclusao + convite aceito [esperado PERMITIDO]', () => batchAceite('uid_x'));
+  await run('Q3 dono remove X [esperado PERMITIDO]', () => updateDoc(doc(D, 'trips', 'trip1'), { memberUids: arrayRemove('uid_x') }));
+  await run('Q4 X removido tenta voltar (convite aceito ficou) [esperado NEGADO]', () => updateDoc(doc(X, 'trips', 'trip1'), { memberUids: arrayUnion('uid_x') }));
+  await seed();
+  await run('Q5 convidado grava acceptedByUid alheio [esperado NEGADO]', () => updateDoc(doc(X, 'convites', 'trip1_x@exemplo.com'), { status: 'recusado', acceptedByUid: 'uid_y' }));
+  await run('Q6 convidado recusa sem acceptedByUid [esperado PERMITIDO]', () => updateDoc(doc(X, 'convites', 'trip1_x@exemplo.com'), { status: 'recusado' }));
+  await env.cleanup(); process.exit(0);
+})().catch((e) => { console.error('FALHA', e); process.exit(1); });

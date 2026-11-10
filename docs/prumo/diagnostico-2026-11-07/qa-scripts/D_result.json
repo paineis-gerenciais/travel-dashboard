@@ -1,0 +1,370 @@
+{
+ "login": [
+  {
+   "dcl": 51,
+   "load": 51,
+   "paint": [
+    "first-paint=28",
+    "first-contentful-paint=64"
+   ],
+   "totalKB": 202.8,
+   "by": {
+    "script:js": {
+     "n": 2,
+     "kB": 23.7
+    },
+    "other:js": {
+     "n": 2,
+     "kB": 174.9
+    },
+    "link:css": {
+     "n": 1,
+     "kB": 4.2
+    }
+   },
+   "js": [
+    {
+     "f": "index-DNRY5yQx.js",
+     "kB": 23.3,
+     "enc": 23
+    },
+    {
+     "f": "react-nf7bT_Uh.js",
+     "kB": 44.5,
+     "enc": 44.2
+    },
+    {
+     "f": "registerSW.js",
+     "kB": 0.4,
+     "enc": 0.1
+    },
+    {
+     "f": "firebase-B2hQ5Ira.js",
+     "kB": 130.4,
+     "enc": 130.1
+    }
+   ]
+  },
+  {
+   "dcl": 58,
+   "load": 58,
+   "paint": [
+    "first-paint=40",
+    "first-contentful-paint=80"
+   ],
+   "totalKB": 202.8,
+   "by": {
+    "script:js": {
+     "n": 2,
+     "kB": 23.7
+    },
+    "other:js": {
+     "n": 2,
+     "kB": 174.9
+    },
+    "link:css": {
+     "n": 1,
+     "kB": 4.2
+    }
+   },
+   "js": [
+    {
+     "f": "index-DNRY5yQx.js",
+     "kB": 23.3,
+     "enc": 23
+    },
+    {
+     "f": "react-nf7bT_Uh.js",
+     "kB": 44.5,
+     "enc": 44.2
+    },
+    {
+     "f": "firebase-B2hQ5Ira.js",
+     "kB": 130.4,
+     "enc": 130.1
+    },
+    {
+     "f": "registerSW.js",
+     "kB": 0.4,
+     "enc": 0.1
+    }
+   ]
+  },
+  {
+   "dcl": 60,
+   "load": 60,
+   "paint": [
+    "first-paint=24",
+    "first-contentful-paint=80"
+   ],
+   "totalKB": 202.8,
+   "by": {
+    "script:js": {
+     "n": 2,
+     "kB": 23.7
+    },
+    "other:js": {
+     "n": 2,
+     "kB": 174.9
+    },
+    "link:css": {
+     "n": 1,
+     "kB": 4.2
+    }
+   },
+   "js": [
+    {
+     "f": "index-DNRY5yQx.js",
+     "kB": 23.3,
+     "enc": 23
+    },
+    {
+     "f": "react-nf7bT_Uh.js",
+     "kB": 44.5,
+     "enc": 44.2
+    },
+    {
+     "f": "firebase-B2hQ5Ira.js",
+     "kB": 130.4,
+     "enc": 130.1
+    },
+    {
+     "f": "registerSW.js",
+     "kB": 0.4,
+     "enc": 0.1
+    }
+   ]
+  }
+ ],
+ "dias": [
+  {
+   "dcl": 50,
+   "load": 50,
+   "paint": [
+    "first-paint=24",
+    "first-contentful-paint=60"
+   ],
+   "totalKB": 221.7,
+   "by": {
+    "script:js": {
+     "n": 7,
+     "kB": 42.6
+    },
+    "other:js": {
+     "n": 2,
+     "kB": 174.9
+    },
+    "link:css": {
+     "n": 1,
+     "kB": 4.2
+    },
+    "fetch:outro": {
+     "n": 9,
+     "kB": 0
+    }
+   },
+   "js": [
+    {
+     "f": "index-DNRY5yQx.js",
+     "kB": 23.3,
+     "enc": 23
+    },
+    {
+     "f": "react-nf7bT_Uh.js",
+     "kB": 44.5,
+     "enc": 44.2
+    },
+    {
+     "f": "firebase-B2hQ5Ira.js",
+     "kB": 130.4,
+     "enc": 130.1
+    },
+    {
+     "f": "registerSW.js",
+     "kB": 0.4,
+     "enc": 0.1
+    },
+    {
+     "f": "index.esm-BGVNMC20.js",
+     "kB": 7.4,
+     "enc": 7.1
+    },
+    {
+     "f": "Cidades-DXnSMJaU.js",
+     "kB": 2.3,
+     "enc": 2
+    },
+    {
+     "f": "MoneyInput-DzYQn_iW.js",
+     "kB": 2.9,
+     "enc": 2.6
+    },
+    {
+     "f": "LinkField-B8qX9ABV.js",
+     "kB": 1.2,
+     "enc": 0.9
+    },
+    {
+     "f": "Dias-DZ8p5Pbj.js",
+     "kB": 5.1,
+     "enc": 4.8
+    }
+   ],
+   "tabs": 3
+  },
+  {
+   "dcl": 53,
+   "load": 53,
+   "paint": [
+    "first-paint=28",
+    "first-contentful-paint=64"
+   ],
+   "totalKB": 221.7,
+   "by": {
+    "script:js": {
+     "n": 7,
+     "kB": 42.6
+    },
+    "other:js": {
+     "n": 2,
+     "kB": 174.9
+    },
+    "link:css": {
+     "n": 1,
+     "kB": 4.2
+    },
+    "fetch:outro": {
+     "n": 9,
+     "kB": 0
+    }
+   },
+   "js": [
+    {
+     "f": "index-DNRY5yQx.js",
+     "kB": 23.3,
+     "enc": 23
+    },
+    {
+     "f": "react-nf7bT_Uh.js",
+     "kB": 44.5,
+     "enc": 44.2
+    },
+    {
+     "f": "firebase-B2hQ5Ira.js",
+     "kB": 130.4,
+     "enc": 130.1
+    },
+    {
+     "f": "registerSW.js",
+     "kB": 0.4,
+     "enc": 0.1
+    },
+    {
+     "f": "index.esm-BGVNMC20.js",
+     "kB": 7.4,
+     "enc": 7.1
+    },
+    {
+     "f": "Cidades-DXnSMJaU.js",
+     "kB": 2.3,
+     "enc": 2
+    },
+    {
+     "f": "MoneyInput-DzYQn_iW.js",
+     "kB": 2.9,
+     "enc": 2.6
+    },
+    {
+     "f": "LinkField-B8qX9ABV.js",
+     "kB": 1.2,
+     "enc": 0.9
+    },
+    {
+     "f": "Dias-DZ8p5Pbj.js",
+     "kB": 5.1,
+     "enc": 4.8
+    }
+   ],
+   "tabs": 3
+  },
+  {
+   "dcl": 67,
+   "load": 67,
+   "paint": [
+    "first-paint=44",
+    "first-contentful-paint=80"
+   ],
+   "totalKB": 221.7,
+   "by": {
+    "script:js": {
+     "n": 7,
+     "kB": 42.6
+    },
+    "other:js": {
+     "n": 2,
+     "kB": 174.9
+    },
+    "link:css": {
+     "n": 1,
+     "kB": 4.2
+    },
+    "fetch:outro": {
+     "n": 9,
+     "kB": 0
+    }
+   },
+   "js": [
+    {
+     "f": "index-DNRY5yQx.js",
+     "kB": 23.3,
+     "enc": 23
+    },
+    {
+     "f": "react-nf7bT_Uh.js",
+     "kB": 44.5,
+     "enc": 44.2
+    },
+    {
+     "f": "firebase-B2hQ5Ira.js",
+     "kB": 130.4,
+     "enc": 130.1
+    },
+    {
+     "f": "registerSW.js",
+     "kB": 0.4,
+     "enc": 0.1
+    },
+    {
+     "f": "index.esm-BGVNMC20.js",
+     "kB": 7.4,
+     "enc": 7.1
+    },
+    {
+     "f": "Cidades-DXnSMJaU.js",
+     "kB": 2.3,
+     "enc": 2
+    },
+    {
+     "f": "MoneyInput-DzYQn_iW.js",
+     "kB": 2.9,
+     "enc": 2.6
+    },
+    {
+     "f": "LinkField-B8qX9ABV.js",
+     "kB": 1.2,
+     "enc": 0.9
+    },
+    {
+     "f": "Dias-DZ8p5Pbj.js",
+     "kB": 5.1,
+     "enc": 4.8
+    }
+   ],
+   "tabs": 3
+  }
+ ],
+ "nav": {
+  "heading": "Viagem Perf",
+  "temTabbar": 1
+ }
+}

@@ -1,0 +1,6 @@
+Q1 auto-inclusao sozinha (sem marcar convite) [esperado NEGADO] NEGADO
+Q2 lote: auto-inclusao + convite aceito [esperado PERMITIDO] PERMITIDO
+Q3 dono remove X [esperado PERMITIDO] PERMITIDO
+Q4 X removido tenta voltar (convite aceito ficou) [esperado NEGADO] NEGADO
+Q5 convidado grava acceptedByUid alheio [esperado NEGADO] NEGADO
+Q6 convidado recusa sem acceptedByUid [esperado PERMITIDO] PERMITIDO

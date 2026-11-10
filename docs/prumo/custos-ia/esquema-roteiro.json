@@ -1,0 +1,16 @@
+{"type":"object","additionalProperties":false,"required":["sugestoes","observacoes"],"properties":{
+ "sugestoes":{"type":"array","maxItems":6,"items":{"type":"object","additionalProperties":false,
+  "required":["nome","tipo","horario","duracaoMin","custoPorPessoa","precoEstimado","moedaOriginal","exigeReserva","fonte","dataFonte","motivo"],
+  "properties":{
+   "nome":{"type":"string"},
+   "tipo":{"type":"string","enum":["atracao","alimentacao","transporte","outra"]},
+   "horario":{"type":"string","description":"HH:MM"},
+   "duracaoMin":{"type":"integer"},
+   "custoPorPessoa":{"type":["number","null"]},
+   "precoEstimado":{"type":"boolean"},
+   "moedaOriginal":{"type":["string","null"]},
+   "exigeReserva":{"type":"boolean"},
+   "fonte":{"type":"string","description":"URL consultada"},
+   "dataFonte":{"type":["string","null"]},
+   "motivo":{"type":"string","description":"Por que encaixa no dia, em uma frase"}}}},
+ "observacoes":{"type":"array","items":{"type":"string"}}}}

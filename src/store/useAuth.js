@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase.js';
@@ -39,6 +40,9 @@ export function useAuth() {
 
   const registerWithEmail = async (email, senha, nome) => {
     const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha);
+    // Convites só valem para e-mail confirmado. Falha no envio não impede o cadastro
+    // (o usuário pode pedir o reenvio em "Minhas viagens").
+    try { await sendEmailVerification(cred.user); } catch (e) { console.error('Falha ao enviar confirmação de e-mail', e); }
     if (nome && nome.trim()) {
       await updateProfile(cred.user, { displayName: nome.trim() });
       await upsertUserProfile(auth.currentUser); // grava o nome já no primeiro acesso
