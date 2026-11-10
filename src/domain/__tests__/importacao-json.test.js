@@ -72,4 +72,19 @@ describe('matrizesDeJson', () => {
     expect(v.erros).toEqual([]);
     expect(v.itens[0].polui).toBeUndefined();
   });
+
+  it('valor que não é simples (objeto, lista, toString falso) vira vazio sem quebrar', () => {
+    const obj = {
+      formato: FORMATO_IMPORTACAO, versao: VERSAO_IMPORTACAO,
+      abas: { Atracoes: [
+        { data: '2030-06-11', nome: { toString: 'x' } },
+        { data: '2030-06-12', nome: 'Museu', custo: [1, 2] },
+      ] },
+    };
+    const { matrizes } = matrizesDeJson(obj);
+    expect(() => validarAba('attractions', matrizes.attractions)).not.toThrow();
+    const v = validarAba('attractions', matrizes.attractions);
+    expect(v.erros).toEqual([{ linha: 2, coluna: 'nome', mensagem: 'obrigatório' }]);
+    expect(v.itens.map((i) => [i.name, i.cost])).toEqual([['Museu', 0]]);
+  });
 });

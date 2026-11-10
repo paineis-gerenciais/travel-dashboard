@@ -141,6 +141,8 @@ export const VERSAO_IMPORTACAO = 1;
  */
 export function matrizesDeJson(obj) {
   const proprio = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  // Célula só aceita valor simples; objeto ou lista vira vazio (e cai no "obrigatório" se for o caso).
+  const celula = (v) => (v === null || ['string', 'number', 'boolean'].includes(typeof v) ? v : '');
   const ehObjeto = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
   const vazio = { matrizes: {}, ignoradas: [] };
 
@@ -161,7 +163,7 @@ export function matrizesDeJson(obj) {
     const cols = ESQUEMA[kind].colunas.map((c) => c.col);
     matrizes[kind] = [
       cols,
-      ...linhas.map((l) => cols.map((c) => (ehObjeto(l) && proprio(l, c) ? l[c] : ''))),
+      ...linhas.map((l) => cols.map((c) => (ehObjeto(l) && proprio(l, c) ? celula(l[c]) : ''))),
     ];
   });
   return { matrizes, ignoradas, erro: null };

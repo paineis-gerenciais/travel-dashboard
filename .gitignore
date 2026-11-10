@@ -10,4 +10,4 @@ service-account-key.json
 
 # Saídas da skill roteiro-viagem: roteiros e exportações de viagens reais.
 # Nunca entram em commit (o repositório é público).
-importacoes/
+importacoes
