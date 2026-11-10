@@ -295,3 +295,16 @@ export function todayISO() {
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
+
+/**
+ * Data LOCAL do aparelho ("AAAA-MM-DD") de um instante em ISO (UTC).
+ * Os pagamentos gravam `new Date().toISOString()`; exibir `iso.slice(0, 10)`
+ * mostraria a data UTC (um pagamento às 23h30 em Brasília sairia no dia seguinte).
+ * Devolve '' se o texto não for um instante válido.
+ */
+export function dataLocalDeIso(iso) {
+  const d = new Date(iso);
+  if (!iso || Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}

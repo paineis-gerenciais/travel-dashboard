@@ -162,11 +162,12 @@ export function paymentsList(state) {
  * - `total`: soma dos custos ativos (itens + hospedagem).
  * - `unassigned`: custo sem pagador definido.
  * - `unassignedItems[]`: as despesas sem pagador ({ kind, id, rotulo, valor }).
- * - `rows[]`: por participante → { id, name, paid, owed, balance, balanceCents }.
- *   `owed` é a responsabilidade dele segundo os percentuais de cada despesa,
- *   com as partes fechando em centavos (maior resto).
- *   Os pagamentos de acerto entram assim: quem pagou (`de`) tem `paid` somado;
- *   quem recebeu (`para`) tem `paid` reduzido. O saldo é `paid - owed`.
+ * - `rows[]`: por participante → { id, name, paid, settled, owed, balance, balanceCents }.
+ *   `paid` é só o que ele pagou em DESPESAS. `owed` é a responsabilidade dele
+ *   segundo os percentuais de cada despesa, com as partes fechando em centavos
+ *   (maior resto). `settled` é o efeito líquido dos pagamentos de acerto: positivo
+ *   para quem pagou (`de`), negativo para quem recebeu (`para`).
+ *   O saldo é `paid + settled - owed`.
  */
 export function splitSummary(state) {
   const people = participants(state);
@@ -192,20 +193,22 @@ export function splitSummary(state) {
     Object.entries(partes).forEach(([id, v]) => { owed[id] += v; });
   });
 
+  const settled = Object.fromEntries(people.map((p) => [p.id, 0]));
   paymentsList(state).forEach((pg) => {
     const v = toCents(pg.valor);
-    if (paid[pg.de] === undefined || paid[pg.para] === undefined) return;
-    paid[pg.de] += v;
-    paid[pg.para] -= v;
+    if (settled[pg.de] === undefined || settled[pg.para] === undefined) return;
+    settled[pg.de] += v;
+    settled[pg.para] -= v;
   });
 
   const rows = people.map((p) => ({
     id: p.id,
     name: p.name,
     paid: paid[p.id] / 100,
+    settled: settled[p.id] / 100,
     owed: owed[p.id] / 100,
-    balance: (paid[p.id] - owed[p.id]) / 100,
-    balanceCents: paid[p.id] - owed[p.id],
+    balance: (paid[p.id] + settled[p.id] - owed[p.id]) / 100,
+    balanceCents: paid[p.id] + settled[p.id] - owed[p.id],
   }));
 
   return { people, total: total / 100, unassigned: unassigned / 100, unassignedItems, rows };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTrip } from '../../store/TripProvider.jsx';
 import { money, num, fmtDate } from '../../domain/format.js';
-import { allPlanningDates } from '../../domain/dates.js';
+import { allPlanningDates, dataLocalDeIso } from '../../domain/dates.js';
 import {
   totals, costRowsByView, expenseStatusTotals, paidPct, palette,
   dayLodging, dayFood, dayAttractions, dayTransport, dayOther, dayTotal,
@@ -288,7 +288,7 @@ function SplitSheet({ onClose }) {
               <Row
                 icon="👤"
                 title={r.name}
-                sub={`Pagou ${money(r.paid)} · deve ${money(r.owed)}`}
+                sub={`Pagou ${money(r.paid)} · deve ${money(r.owed)}${r.settled ? ` · acertos ${r.settled > 0 ? '+' : '−'}${money(Math.abs(r.settled))}` : ''}`}
                 value={
                   <span className="num" style={{ color: r.balance >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
                     {r.balance >= 0 ? '+' : ''}{money(r.balance)}
@@ -366,7 +366,7 @@ function SplitSheet({ onClose }) {
                   key={pg.id}
                   icon="✅"
                   title={`${nomeDe(pg.de)} pagou a ${nomeDe(pg.para)}`}
-                  sub={pg.data ? fmtDate(pg.data.slice(0, 10)) : 'Pagamento confirmado'}
+                  sub={dataLocalDeIso(pg.data) ? fmtDate(dataLocalDeIso(pg.data)) : 'Pagamento confirmado'}
                   value={<span className="num" style={{ color: 'var(--text-3)' }}>{money(pg.valor)}</span>}
                 >
                   <button className="btn-ghost btn-sm" onClick={() => actions.undoPayment(pg.id)}>

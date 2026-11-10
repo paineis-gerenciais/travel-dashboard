@@ -852,6 +852,25 @@ describe('acerto com pagamentos e centavos', () => {
     expect(r1.rows.map((x) => x.owed)).toEqual([33.34, 33.33, 33.33]);
   });
 
+  it('paid é só de despesas; settled traz o efeito dos acertos; saldo soma os dois (#38, D2)', () => {
+    const st = mk([A, B, C], [{ cost: 100, paidBy: A }], [pg(B, A, 33.33)]);
+    const r = splitSummary(st);
+    const por = Object.fromEntries(r.rows.map((x) => [x.id, x]));
+    expect(por[A].paid).toBe(100);            // nunca "Pagou 66,67"
+    expect(por[A].settled).toBe(-33.33);      // recebeu
+    expect(por[B].paid).toBe(0);
+    expect(por[B].settled).toBe(33.33);       // pagou o acerto
+    expect(por[C].settled).toBe(0);
+    expect(por[A].balanceCents).toBe(10000 - 3333 - 3334);
+    expect(por[B].balanceCents).toBe(0 + 3333 - 3333);
+    expect(soma(r)).toBe(0);
+  });
+
+  it('sem pagamentos, settled é 0 em todos', () => {
+    const r = splitSummary(mk([A, B], [{ cost: 100, paidBy: A }]));
+    expect(r.rows.map((x) => x.settled)).toEqual([0, 0]);
+  });
+
   it('pagamentos inválidos são ignorados', () => {
     const st = mk([A, B], [{ cost: 100, paidBy: A }], [{ id: 'x', de: A, para: A, valor: 10 }, { id: 'y', de: A, para: B, valor: 0 }]);
     expect(paymentsList(st)).toEqual([]);
