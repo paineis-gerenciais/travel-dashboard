@@ -129,7 +129,11 @@ function DocumentsEditor() {
             onChange={(e) => actions.setDocumentField(d.id, 'label', e.target.value)}
             style={{ flex: 1 }}
           />
-          <a className="btn btn-sm" href={d.url} target="_blank" rel="noreferrer" aria-label={`Abrir ${d.label || 'documento'}`}>Abrir</a>
+          {isValidLink(d.url) ? (
+            <a className="btn btn-sm" href={d.url} target="_blank" rel="noreferrer" aria-label={`Abrir ${d.label || 'documento'}`}>Abrir</a>
+          ) : (
+            <span className="tiny" role="note">Link inválido</span>
+          )}
           <button
             className="btn-danger btn-sm"
             aria-label={`Remover ${d.label || 'documento'}`}
