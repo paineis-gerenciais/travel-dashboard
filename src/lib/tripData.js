@@ -10,9 +10,9 @@
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
   collection, getDocs, query, where, onSnapshot,
-  serverTimestamp, arrayUnion, arrayRemove,
+  serverTimestamp, arrayUnion, arrayRemove, writeBatch,
 } from 'firebase/firestore';
-import { db } from './firebase.js';
+import { db, auth } from './firebase.js';
 import { normalizeState, blankState } from '../domain/state.js';
 
 /** Versão do app, anexada ao feedback para contextualizar relatos. */
@@ -171,19 +171,36 @@ export async function acceptPendingInvites(user) {
   // As regras só aceitam convites de e-mail verificado; sem isto haveria erro
   // de permissão a cada login de conta de e-mail e senha não confirmada.
   if (user.emailVerified !== true) return;
+  // Ao reabrir o app depois de confirmar o e-mail, o SDK atualiza
+  // `emailVerified`, mas reaproveita o token antigo, cuja claim
+  // `email_verified` continua falsa por até 1 hora: as regras negariam. Força a
+  // renovação quando as duas informações divergem.
+  try {
+    const atual = auth.currentUser;
+    if (atual && atual.emailVerified) {
+      const t = await atual.getIdTokenResult();
+      if (t.claims.email_verified !== true) await atual.getIdToken(true);
+    }
+  } catch (err) {
+    console.error('Falha ao renovar o token antes de aceitar convites', err);
+  }
   const q = query(collection(db, 'convites'), where('emailConvidado', '==', e));
   const snap = await getDocs(q);
   for (const d of snap.docs) {
     const inv = d.data();
     if (inv.status && inv.status !== 'pendente') continue;
     try {
-      await updateDoc(doc(db, 'trips', inv.tripId), { memberUids: arrayUnion(user.uid) });
+      // Entrada na viagem e aceite no mesmo lote: as regras exigem os dois juntos.
+      const lote = writeBatch(db);
+      lote.update(doc(db, 'trips', inv.tripId), { memberUids: arrayUnion(user.uid) });
+      lote.update(d.ref, { status: 'aceito', acceptedByUid: user.uid, acceptedAt: serverTimestamp() });
+      await lote.commit();
+      // Só depois do lote: dentro dele a pessoa ainda não conta como membro.
       await setDoc(
         doc(db, 'trips', inv.tripId, 'members', user.uid),
         { email: e, displayName: user.displayName || e, role: 'editor', joinedAt: serverTimestamp() },
         { merge: true }
       );
-      await updateDoc(d.ref, { status: 'aceito', acceptedByUid: user.uid, acceptedAt: serverTimestamp() });
     } catch (err) {
       console.error('Falha ao aceitar convite da viagem', inv.tripId, err);
     }

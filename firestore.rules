@@ -66,6 +66,9 @@ service cloud.firestore {
         // C) convidado se auto-incluindo — adiciona SÓ a si mesmo, e só se houver
         //    convite PENDENTE, criado pelo dono desta viagem, para o e-mail
         //    VERIFICADO dele. Convite aceito/recusado não vale (revogação efetiva).
+        //    A entrada e o aceite vão no MESMO lote (getAfter): sem isso, quem
+        //    entrasse sem aceitar manteria um convite pendente e voltaria
+        //    sozinho depois de removido (revisão de segurança do PR #37).
         ( !(request.auth.uid in resource.data.memberUids)
           && request.auth.uid in request.resource.data.memberUids
           && request.resource.data.memberUids.removeAll(resource.data.memberUids) == [request.auth.uid]
@@ -73,7 +76,9 @@ service cloud.firestore {
           && request.resource.data.ownerId == resource.data.ownerId
           && emailVerificado()
           && conviteDe(tripId).status == 'pendente'
-          && conviteDe(tripId).ownerUid == resource.data.ownerId )
+          && conviteDe(tripId).ownerUid == resource.data.ownerId
+          && getAfter(/databases/$(database)/documents/convites/$(tripId + '_' + myEmail())).data.status == 'aceito'
+          && getAfter(/databases/$(database)/documents/convites/$(tripId + '_' + myEmail())).data.acceptedByUid == request.auth.uid )
       );
 
       // Versões — membros leem, criam e atualizam; só o dono apaga
@@ -134,7 +139,8 @@ service cloud.firestore {
           && resource.data.status == 'pendente'
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'acceptedByUid', 'acceptedAt'])
-          && request.resource.data.status in ['aceito', 'recusado'] )
+          && request.resource.data.status in ['aceito', 'recusado']
+          && request.resource.data.get('acceptedByUid', request.auth.uid) == request.auth.uid )
         ||
         // dono: reenviar o convite (setDoc sobre o mesmo id) mantendo viagem,
         // e-mail e autoria, sempre como pendente

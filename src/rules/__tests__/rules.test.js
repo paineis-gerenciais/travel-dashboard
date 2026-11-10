@@ -15,7 +15,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 
 let testEnv;
 
@@ -80,11 +80,12 @@ describe('acesso a uma viagem', () => {
 });
 
 describe('auto-inclusão via convite', () => {
-  it('convidado COM convite consegue se adicionar (só a si mesmo)', async () => {
+  it('convidado COM convite consegue se adicionar (só a si mesmo), aceitando no mesmo lote', async () => {
     const db = ctx(CONVIDADO).firestore();
-    await assertSucceeds(
-      updateDoc(doc(db, 'trips', 'trip1'), { memberUids: [DONO.sub, CONVIDADO.sub] })
-    );
+    const lote = writeBatch(db);
+    lote.update(doc(db, 'trips', 'trip1'), { memberUids: [DONO.sub, CONVIDADO.sub] });
+    lote.update(doc(db, 'convites', `trip1_${CONVIDADO.email}`), { status: 'aceito', acceptedByUid: CONVIDADO.sub });
+    await assertSucceeds(lote.commit());
   });
 
   it('estranho SEM convite NÃO consegue se adicionar', async () => {
@@ -257,13 +258,32 @@ describe('criação de convite (T2, T3, T4)', () => {
 
 describe('auto-inclusão: convite pendente, do dono, e-mail verificado (T1, T5, T11)', () => {
   const entrar = (db) => updateDoc(doc(db, 'trips', 'trip1'), { memberUids: [DONO.sub, CONVIDADO.sub] });
+  // Como o app faz: entrada na viagem e aceite do convite no mesmo lote.
+  const aceitar = (db, quem = CONVIDADO.sub) => {
+    const lote = writeBatch(db);
+    lote.update(doc(db, 'trips', 'trip1'), { memberUids: [DONO.sub, CONVIDADO.sub] });
+    lote.update(doc(db, 'convites', CID), { status: 'aceito', acceptedByUid: quem, acceptedAt: new Date() });
+    return lote.commit();
+  };
 
-  it('T11: pendente + verificado entra e marca o convite como aceito', async () => {
-    const db = ctx(CONVIDADO).firestore();
-    await assertSucceeds(entrar(db));
-    await assertSucceeds(updateDoc(doc(db, 'convites', CID), {
-      status: 'aceito', acceptedByUid: CONVIDADO.sub, acceptedAt: new Date(),
-    }));
+  it('T11: pendente + verificado entra e marca o convite como aceito, no mesmo lote', async () => {
+    await assertSucceeds(aceitar(ctx(CONVIDADO).firestore()));
+  });
+
+  it('Q1: entrar sem aceitar o convite na mesma operação é negado', async () => {
+    await assertFails(entrar(ctx(CONVIDADO).firestore()));
+  });
+
+  it('Q4: removido depois de aceitar NÃO volta, nem entrando nem aceitando de novo', async () => {
+    await assertSucceeds(aceitar(ctx(CONVIDADO).firestore()));
+    // o dono remove (o convite aceito fica, como se o cliente falhasse ao apagá-lo)
+    await assertSucceeds(updateDoc(doc(ctx(DONO).firestore(), 'trips', 'trip1'), { memberUids: [DONO.sub] }));
+    await assertFails(entrar(ctx(CONVIDADO).firestore()));
+    await assertFails(aceitar(ctx(CONVIDADO).firestore()));
+  });
+
+  it('Q5: aceite com acceptedByUid de outra pessoa é negado', async () => {
+    await assertFails(aceitar(ctx(CONVIDADO).firestore(), ESTRANHO.sub));
   });
 
   it('T1: removido, com convite aceito ainda existente, NÃO volta', async () => {

@@ -31,6 +31,12 @@ export default function ShareModal({ tripId, tripName, user, isOwner }) {
     setError('');
     const e = email.trim().toLowerCase();
     if (!e) { setError('Informe um e-mail.'); return; }
+    // Quem já está na viagem não recebe convite de novo: reabrir o convite
+    // aceito deixaria um convite pendente "dormente" para essa pessoa.
+    if (invites.some((i) => i.emailConvidado === e && i.status === 'aceito' && memberUids.includes(i.acceptedByUid))) {
+      setError('Essa pessoa já tem acesso à viagem.');
+      return;
+    }
     setBusy(true);
     try {
       await createInvite(tripId, tripName, user, e);
@@ -80,7 +86,9 @@ export default function ShareModal({ tripId, tripName, user, isOwner }) {
             <Row key={uid} icon={souDono ? '👑' : '🤝'} title={titulo} sub={sub}>
               {isOwner && !souDono && (
                 <button className="btn-danger btn-sm" onClick={async () => {
-                  try { await revokeMember(tripId, uid, emailDoConvite(uid) || m?.email); await refresh(); }
+                  // Só o e-mail do convite aceito por este uid: o e-mail do perfil é
+                  // editável pelo próprio membro e poderia apagar o convite de outra pessoa.
+                  try { await revokeMember(tripId, uid, emailDoConvite(uid)); await refresh(); }
                   catch (err) { setError('Falha ao remover: ' + err.message); }
                 }}>
                   Remover
