@@ -14,6 +14,14 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
     function myEmail() { return request.auth.token.email; }
+    // Convites só valem para quem provou ser dono do e-mail (contas Google já
+    // chegam verificadas; e-mail e senha exige confirmação pelo link).
+    function emailVerificado() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+    function conviteDe(tripId) {
+      return get(/databases/$(database)/documents/convites/$(tripId + '_' + myEmail())).data;
+    }
     function tripData(tripId) {
       return get(/databases/$(database)/documents/trips/$(tripId)).data;
     }
@@ -56,18 +64,22 @@ service cloud.firestore {
           && request.resource.data.ownerId == resource.data.ownerId )
         ||
         // C) convidado se auto-incluindo — adiciona SÓ a si mesmo, e só se houver
-        //    um convite válido para o e-mail dele naquela viagem
+        //    convite PENDENTE, criado pelo dono desta viagem, para o e-mail
+        //    VERIFICADO dele. Convite aceito/recusado não vale (revogação efetiva).
         ( !(request.auth.uid in resource.data.memberUids)
           && request.auth.uid in request.resource.data.memberUids
           && request.resource.data.memberUids.removeAll(resource.data.memberUids) == [request.auth.uid]
           && resource.data.memberUids.removeAll(request.resource.data.memberUids).size() == 0
           && request.resource.data.ownerId == resource.data.ownerId
-          && exists(/databases/$(database)/documents/convites/$(tripId + '_' + myEmail())) )
+          && emailVerificado()
+          && conviteDe(tripId).status == 'pendente'
+          && conviteDe(tripId).ownerUid == resource.data.ownerId )
       );
 
-      // Versões — herdam o acesso da viagem
+      // Versões — membros leem, criam e atualizam; só o dono apaga
       match /versions/{versionId} {
-        allow read, write: if isMember(tripId);
+        allow read, create, update: if isMember(tripId);
+        allow delete: if signedIn() && tripData(tripId).ownerId == request.auth.uid;
       }
 
       // Presença — membros leem; cada um escreve só o próprio doc
@@ -79,35 +91,62 @@ service cloud.firestore {
       // Info de exibição de membros (nome/e-mail/papel)
       match /members/{uid} {
         allow read: if isMember(tripId);
-        allow write: if signedIn() && request.auth.uid == uid && isMember(tripId);
-        allow delete: if signedIn() && tripData(tripId).ownerId == request.auth.uid;
+        // só o dono da viagem grava `role: 'owner'`
+        allow create, update: if signedIn() && request.auth.uid == uid && isMember(tripId)
+          && (request.resource.data.get('role', '') != 'owner'
+              || tripData(tripId).ownerId == request.auth.uid);
+        // o próprio membro apaga o seu registro; o dono apaga qualquer um
+        allow delete: if signedIn()
+          && (request.auth.uid == uid || tripData(tripId).ownerId == request.auth.uid);
       }
 
       // Comentários por item (Fase 5, item 5.F) — herdam o acesso da viagem;
       // só o autor apaga o próprio comentário.
       match /comments/{commentId} {
-        allow read, create: if isMember(tripId);
+        allow read: if isMember(tripId);
+        allow create: if isMember(tripId) && request.resource.data.authorUid == request.auth.uid;
         allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
       }
 
       // Feed de atividade (Fase 5, item 5.F) — só leitura/criação; não se edita
       // nem se apaga um evento de atividade (é um log).
       match /activity/{eventId} {
-        allow read, create: if isMember(tripId);
+        allow read: if isMember(tripId);
+        allow create: if isMember(tripId) && request.resource.data.authorUid == request.auth.uid;
       }
     }
 
-    // Convites
+    // Convites — id `tripId_emailConvidado`; só o DONO da viagem cria.
     match /convites/{conviteId} {
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      // convidado lê os seus; dono lê os da própria viagem
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && tripData(request.resource.data.tripId).ownerId == request.auth.uid
+        && conviteId == request.resource.data.tripId + '_' + request.resource.data.emailConvidado
+        && request.resource.data.status == 'pendente';
+      // convidado (e-mail verificado) lê os seus; dono lê os que criou
       allow read: if signedIn() && (
-        resource.data.emailConvidado == myEmail()
+        (emailVerificado() && resource.data.emailConvidado == myEmail())
         || resource.data.ownerUid == request.auth.uid
       );
-      // convidado aceita/recusa o seu; dono cancela o que criou
-      allow update, delete: if signedIn() && (
-        resource.data.emailConvidado == myEmail()
+      allow update: if signedIn() && (
+        // convidado: só status (pendente -> aceito/recusado) e carimbo de aceite
+        ( emailVerificado() && resource.data.emailConvidado == myEmail()
+          && resource.data.status == 'pendente'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'acceptedByUid', 'acceptedAt'])
+          && request.resource.data.status in ['aceito', 'recusado'] )
+        ||
+        // dono: reenviar o convite (setDoc sobre o mesmo id) mantendo viagem,
+        // e-mail e autoria, sempre como pendente
+        ( resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.emailConvidado == resource.data.emailConvidado
+          && request.resource.data.status == 'pendente' )
+      );
+      // dono cancela o que criou; convidado verificado apaga o seu
+      allow delete: if signedIn() && (
+        (emailVerificado() && resource.data.emailConvidado == myEmail())
         || resource.data.ownerUid == request.auth.uid
       );
     }

@@ -168,6 +168,9 @@ export async function cancelInvite(conviteId) {
 export async function acceptPendingInvites(user) {
   const e = lower(user.email);
   if (!e) return;
+  // As regras só aceitam convites de e-mail verificado; sem isto haveria erro
+  // de permissão a cada login de conta de e-mail e senha não confirmada.
+  if (user.emailVerified !== true) return;
   const q = query(collection(db, 'convites'), where('emailConvidado', '==', e));
   const snap = await getDocs(q);
   for (const d of snap.docs) {
@@ -193,9 +196,17 @@ export async function listMembers(tripId) {
   return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
 }
 
-export async function revokeMember(tripId, uid) {
+/**
+ * Remove o membro. Apaga também o convite dele (`email` do convite), senão o
+ * convite aceito continuaria valendo e a pessoa poderia voltar sozinha.
+ */
+export async function revokeMember(tripId, uid, email) {
   await updateDoc(doc(db, 'trips', tripId), { memberUids: arrayRemove(uid) });
   try { await deleteDoc(doc(db, 'trips', tripId, 'members', uid)); } catch (e) { console.error(e); }
+  const e = lower(email);
+  if (e) {
+    try { await deleteDoc(doc(db, 'convites', inviteId(tripId, e))); } catch (err) { console.error(err); }
+  }
 }
 
 /* ---------- Comentários por item (Fase 5, item 5.F) ---------- */
