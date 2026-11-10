@@ -1,0 +1,27 @@
+{
+  "formato": "planilha-viagem",
+  "versao": 1,
+  "observacao": "Dados fictícios, só para testes. Nomes, preços e links não são reais.",
+  "abas": {
+    "Cidades": [
+      { "cidade": "Lisboa", "emoji": "🇵🇹", "check_in": "2030-06-10", "check_out": "2030-06-13", "hospedagem": "Hotel Exemplo Lisboa", "custo_diaria": 650, "cafe_incluso": "sim", "status": "Planejado", "notas": "Estimativa fictícia", "link": "https://exemplo.com/hotel-lisboa" },
+      { "cidade": "Porto", "emoji": "🇵🇹", "check_in": "2030-06-13", "check_out": "2030-06-16", "hospedagem": "Pousada Exemplo Porto", "custo_diaria": 480, "cafe_incluso": "não", "status": "Planejado" }
+    ],
+    "Transportes": [
+      { "data": "2030-06-13", "hora": "09:30", "meio": "Trem", "origem_cidade": "Lisboa", "origem_local": "Estação Exemplo", "destino_cidade": "Porto", "destino_local": "Estação Central Exemplo", "duracao_min": 180, "custo": 150, "status": "Planejado", "link": "https://exemplo.com/trem" }
+    ],
+    "Atracoes": [
+      { "data": "2030-06-11", "hora": "10:00", "nome": "Museu Exemplo", "custo": 90, "status": "Planejado", "link": "https://exemplo.com/museu" },
+      { "data": "2030-06-14", "hora": "15:00", "nome": "Passeio de barco fictício", "custo": 120, "status": "Planejado" }
+    ],
+    "Alimentacao": [
+      { "data": "2030-06-11", "tipo": "Jantar", "local": "Restaurante Exemplo", "custo": 180, "status": "Planejado" }
+    ],
+    "Outras": [
+      { "data": "2030-06-10", "nome": "Chip de celular (exemplo)", "custo": 60, "status": "Planejado" }
+    ],
+    "Checklist": [
+      { "categoria": "Documentos", "item": "Conferir validade do passaporte", "prioridade": "Alta", "status": "Pendente" }
+    ]
+  }
+}

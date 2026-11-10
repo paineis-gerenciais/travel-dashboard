@@ -128,6 +128,77 @@ export function kindPorAba(nome) {
   return achado?.kind || null;
 }
 
+/* ---------- Arquivo JSON de importação ---------- */
+
+export const FORMATO_IMPORTACAO = 'planilha-viagem';
+export const VERSAO_IMPORTACAO = 1;
+
+/** Minúsculas, sem acento e sem espaços nas pontas (mesma regra do cabeçalho do .xlsx). */
+const normalizar = (v) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+/**
+ * Converte o JSON de importação em matrizes iguais às que `lerPlanilha` devolve
+ * (cabeçalho na ordem do ESQUEMA + uma linha por objeto), para passar pela mesma
+ * validação e prévia. Abas desconhecidas vão em `ignoradas`; `erro` recusa o
+ * arquivo inteiro. Pura: lê só chaves próprias.
+ *
+ * - Nomes de coluna casam sem diferenciar maiúscula, acento e espaços nas pontas.
+ * - Coluna ausente na linha vira `undefined` ("não enviada"), diferente de `''`
+ *   (enviada e vazia): é o que permite atualizar só algumas colunas.
+ * - Chaves que não casam com nenhuma coluna vão em `colunasIgnoradas`.
+ * - Abas que normalizam para o mesmo tipo têm as linhas somadas.
+ */
+export function matrizesDeJson(obj) {
+  const proprio = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  // Célula só aceita valor simples; objeto ou lista vira vazio (e cai no "obrigatório" se for o caso).
+  const celula = (v) => (v === null || ['string', 'number', 'boolean'].includes(typeof v) ? v : '');
+  const ehObjeto = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const vazio = { matrizes: {}, ignoradas: [], colunasIgnoradas: [] };
+
+  if (ehObjeto(obj) && Array.isArray(obj.cities)) {
+    return {
+      ...vazio,
+      erro: 'Este é um arquivo de cópia de segurança. Para restaurá-lo, use Mais → Importar JSON (substitui a viagem).',
+    };
+  }
+  if (!ehObjeto(obj) || obj.formato !== FORMATO_IMPORTACAO) {
+    return { ...vazio, erro: `formato diferente de "${FORMATO_IMPORTACAO}"` };
+  }
+  if (obj.versao !== VERSAO_IMPORTACAO) {
+    let erro = `versão ${String(obj.versao)} não suportada (esperada: ${VERSAO_IMPORTACAO})`;
+    if (!proprio(obj, 'versao') || obj.versao === undefined) erro = 'campo "versao" ausente';
+    else if (typeof obj.versao === 'string') erro = `versão "${obj.versao}" está em texto; use o número ${VERSAO_IMPORTACAO}`;
+    return { ...vazio, erro };
+  }
+  if (!ehObjeto(obj.abas)) return { ...vazio, erro: 'campo "abas" ausente ou inválido' };
+
+  const matrizes = {};
+  const ignoradas = [];
+  const colunasIgnoradas = [];
+  Object.keys(obj.abas).forEach((nome) => {
+    const kind = kindPorAba(nome);
+    const linhas = obj.abas[nome];
+    if (!kind || !Array.isArray(linhas)) { ignoradas.push(nome); return; }
+    const cols = ESQUEMA[kind].colunas.map((c) => c.col);
+    const corpo = linhas.map((l) => {
+      if (!ehObjeto(l)) return cols.map(() => '');
+      const porNome = new Map();
+      Object.keys(l).forEach((k) => {
+        const n = normalizar(k);
+        if (cols.includes(n)) {
+          if (!porNome.has(n)) porNome.set(n, celula(l[k]));
+        } else if (!colunasIgnoradas.some((x) => x.aba === nome && x.coluna === k)) {
+          colunasIgnoradas.push({ aba: nome, coluna: k });
+        }
+      });
+      return cols.map((c) => (porNome.has(c) ? porNome.get(c) : undefined));
+    });
+    if (matrizes[kind]) matrizes[kind].push(...corpo);
+    else matrizes[kind] = [cols, ...corpo];
+  });
+  return { matrizes, ignoradas, colunasIgnoradas, erro: null };
+}
+
 /* ---------- Leitura de células ---------- */
 
 const ehVazio = (v) => v === null || v === undefined || String(v).trim() === '';
@@ -150,7 +221,9 @@ export function parseDataCelula(v) {
   }
 
   if (typeof v === 'number' && Number.isFinite(v)) {
-    // série do Excel: dias desde 1899-12-30
+    // série do Excel: dias desde 1899-12-30. Faixa aceita: 1 a 73050 (até 2099);
+    // fora dela quase sempre é outro número (ex.: 20300610), não uma data.
+    if (v < 1 || v > 73050) return { ok: false, erro: 'data fora do intervalo' };
     const ms = Math.round((v - 25569) * 86400 * 1000);
     const d = new Date(ms);
     if (Number.isNaN(d.getTime())) return { ok: false, erro: 'data inválida' };
@@ -159,8 +232,12 @@ export function parseDataCelula(v) {
 
   const s = String(v).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const d = new Date(s + 'T00:00');
-    if (Number.isNaN(d.getTime())) return { ok: false, erro: 'data inexistente' };
+    const [y, m, dia] = s.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1, dia));
+    d.setUTCFullYear(y); // evita o mapeamento de anos 0-99 para 1900-1999
+    if (d.getUTCFullYear() !== y || d.getUTCMonth() !== m - 1 || d.getUTCDate() !== dia) {
+      return { ok: false, erro: 'data inexistente' };
+    }
     return { ok: true, valor: s };
   }
   return { ok: false, erro: `use o formato AAAA-MM-DD (recebido: "${s}")` };
@@ -275,10 +352,14 @@ export function validarAba(kind, matriz) {
     if (vazia) return;
 
     const item = {};
+    const enviados = [];
     let temErro = false;
 
     def.colunas.forEach((c) => {
-      const bruto = idx[c.col] >= 0 ? linha[idx[c.col]] : '';
+      // coluna sem cabeçalho ou célula `undefined` = "não enviada" (≠ vazia)
+      const naoEnviada = idx[c.col] < 0 || linha[idx[c.col]] === undefined;
+      const bruto = naoEnviada ? '' : linha[idx[c.col]];
+      if (!naoEnviada) enviados.push(c.campo);
       if (c.obrigatorio && ehVazio(bruto)) {
         erros.push({ linha: numeroLinha, coluna: c.col, mensagem: 'obrigatório' });
         temErro = true;
@@ -293,7 +374,7 @@ export function validarAba(kind, matriz) {
       if (r.valor !== undefined) item[c.campo] = r.valor;
     });
 
-    if (!temErro) itens.push({ ...item, _linha: numeroLinha });
+    if (!temErro) itens.push({ ...item, _linha: numeroLinha, _enviados: enviados });
   });
 
   return { itens, erros };
@@ -324,13 +405,17 @@ export function mesclarPlanilha(state, porKind) {
     let atualizados = 0;
 
     itens.forEach((bruto) => {
-      const { _linha, ...campos } = bruto;
+      const { _linha, _enviados, ...campos } = bruto;
       const existente = campos.id ? porId.get(campos.id) : null;
 
       if (existente) {
-        Object.entries(campos).forEach(([k, v]) => {
+        // com `_enviados`, só as colunas que vieram na planilha; sem ele, todas as do item
+        const chaves = Array.isArray(_enviados) ? _enviados : Object.keys(campos);
+        chaves.forEach((k) => {
           if (k === 'id') return;
-          if (k === 'link' && v === undefined) { delete existente.link; return; }
+          const v = campos[k];
+          // link vazio não apaga o link atual (comportamento de antes do #41)
+          if (v === undefined) return;
           existente[k] = v;
         });
         atualizados += 1;
@@ -347,6 +432,41 @@ export function mesclarPlanilha(state, porKind) {
   });
 
   return { state: novo, resumo };
+}
+
+/* ---------- Possíveis duplicatas ---------- */
+
+const CHAVE_DUPLICATA = {
+  cities: ['city'],
+  transports: ['date', 'originCity', 'destCity', 'mode'],
+  foodItems: ['date', 'type', 'place'],
+  attractions: ['date', 'name'],
+  otherExpenses: ['date', 'name'],
+  checklist: ['item'],
+};
+
+const chaveDe = (kind, item) =>
+  CHAVE_DUPLICATA[kind].map((c) => normalizar(item[c]).replace(/\s+/g, ' ')).join('|');
+
+/**
+ * Itens validados SEM id (ou com id que não existe na viagem) que parecem repetir
+ * um item já existente. Pura. Devolve `[{ kind, linha, idExistente }]`.
+ */
+export function possiveisDuplicatas(state, porKind) {
+  const achados = [];
+  Object.entries(porKind || {}).forEach(([kind, itens]) => {
+    if (!CHAVE_DUPLICATA[kind] || !Array.isArray(itens)) return;
+    const existentes = state?.[kind] || [];
+    const ids = new Set(existentes.map((x) => x.id));
+    const porChave = new Map();
+    existentes.forEach((x) => { const k = chaveDe(kind, x); if (!porChave.has(k)) porChave.set(k, x.id); });
+    itens.forEach((item) => {
+      if (item.id && ids.has(item.id)) return;
+      const id = porChave.get(chaveDe(kind, item));
+      if (id !== undefined) achados.push({ kind, linha: item._linha, idExistente: id });
+    });
+  });
+  return achados;
 }
 
 /** Total de linhas e de erros, para o resumo da prévia. */

@@ -5,6 +5,7 @@ import { money, fmtDate, num } from '../../domain/format.js';
 import { totals, checklistStats } from '../../domain/costs.js';
 import { allPlanningDates, uniqueCities, mainCities } from '../../domain/dates.js';
 import { normalizeState } from '../../domain/state.js';
+import { FORMATO_IMPORTACAO } from '../../domain/sheet.js';
 import { logError } from '../../lib/logger.js';
 import { Row, Sheet, Metric, EmptyState, StatusChip, CHECKLIST_STATUS, SearchField, useToast } from '../ui.jsx';
 import { appUrl, whatsappUrl, nativeShare, copyToClipboard } from '../../lib/invite.js';
@@ -59,6 +60,10 @@ export default function Mais({ user, tripId, theme, toggleTheme, onLogout, onOpe
     reader.onload = () => {
       try {
         const obj = JSON.parse(reader.result);
+        if (obj?.formato === FORMATO_IMPORTACAO) {
+          alert('Este é um arquivo de importação de roteiro. Use Planilha → Enviar planilha preenchida: ele cria e atualiza itens sem apagar nada.');
+          return;
+        }
         if (!obj || !Array.isArray(obj.cities)) throw new Error('Estrutura inválida');
         if (confirm('Importar dados e substituir o conteúdo desta viagem?')) {
           actions.replaceState(normalizeState(obj));
