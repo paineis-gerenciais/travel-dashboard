@@ -72,10 +72,23 @@ export function normalizeState(s) {
   ['cities', 'transports', 'foodItems', 'attractions', 'otherExpenses', 'checklist'].forEach(
     (k) => {
       if (!Array.isArray(s[k])) s[k] = [];
+      // As ações do store localizam itens por id (issue #25). Item legado sem id
+      // ganha um id ESTÁVEL, derivado do conteúdo e da posição: todos os
+      // clientes chegam ao mesmo id para o mesmo dado, e ele fica gravado na
+      // próxima edição.
+      s[k] = s[k].map((x, i) => (x && typeof x === 'object' && !x.id ? { ...x, id: idLegado(k, x, i) } : x));
     }
   );
   migrateParticipants(s);
   return s;
+}
+
+/** Id determinístico para item legado sem id (mesmo dado, mesmo id). */
+export function idLegado(kind, item, index) {
+  const texto = `${kind}|${index}|${JSON.stringify(item)}`;
+  let h = 0;
+  for (let i = 0; i < texto.length; i += 1) h = (h * 31 + texto.charCodeAt(i)) >>> 0;
+  return `l${h.toString(36)}${index.toString(36)}`;
 }
 
 /**

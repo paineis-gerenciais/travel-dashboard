@@ -1081,3 +1081,32 @@ describe('planilha — ida e volta', () => {
     expect(kindPorAba('Inexistente')).toBe(null);
   });
 });
+
+// Issue #25: as ações agem por id; item legado sem id precisa de um id estável.
+describe('itens legados sem id', () => {
+  const legado = () => ({
+    cities: [{ city: 'Lisboa', start: '2030-06-10', end: '2030-06-13' }],
+    attractions: [{ id: 'tem-id', date: '2030-06-11', name: 'Torre' }, { date: '2030-06-12', name: 'Museu' }],
+    checklist: [{ item: 'Passaporte' }],
+  });
+
+  it('ganham id ao carregar, sem mexer em quem já tem', () => {
+    const s = normalizeState(legado());
+    expect(s.cities[0].id).toMatch(/^l/);
+    expect(s.attractions[0].id).toBe('tem-id');
+    expect(s.attractions[1].id).toMatch(/^l/);
+    expect(s.checklist[0].id).toMatch(/^l/);
+  });
+
+  it('o id é o mesmo em cargas diferentes do mesmo dado (todos os clientes concordam)', () => {
+    const a = normalizeState(legado());
+    const b = normalizeState(legado());
+    expect(b.cities[0].id).toBe(a.cities[0].id);
+    expect(b.attractions[1].id).toBe(a.attractions[1].id);
+  });
+
+  it('itens iguais em posições diferentes recebem ids diferentes', () => {
+    const s = normalizeState({ checklist: [{ item: 'Casaco' }, { item: 'Casaco' }] });
+    expect(s.checklist[0].id).not.toBe(s.checklist[1].id);
+  });
+});
