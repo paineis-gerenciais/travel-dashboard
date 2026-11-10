@@ -23,7 +23,7 @@ await env.withSecurityRulesDisabled(async (admin) => {
 
 const linhas = [];
 async function check(id, descricao, esperado, promessa) {
-  let r; try { await promessa; r = 'PERMITIDO'; } catch (e) { r = /PERMISSION_DENIED|permission/i.test(String(e.message || e)) ? 'NEGADO' : 'ERRO: ' + e.message; }
+  let r; try { await promessa; r = 'PERMITIDO'; } catch (e) { r = (e.code === 'permission-denied' || /PERMISSION_DENIED|permission/i.test(String(e.message || e))) ? 'NEGADO' : 'ERRO: ' + e.message; }
   linhas.push(`${id} | ${descricao} | esperado ${esperado} | obtido ${r} | ${r === esperado ? 'ok' : 'FALHA DE SEGURANCA'}`);
 }
 
