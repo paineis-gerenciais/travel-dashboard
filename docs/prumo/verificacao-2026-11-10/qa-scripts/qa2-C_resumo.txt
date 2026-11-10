@@ -1,0 +1,93 @@
+
+## 360 | light (data-theme=light) | Dias | chips: Planejado ▾, Reservado ▾, Pago ▾, Cancelado ▾
+  color-contrast (serious) nos=8 ex=.appbar-title > .tiny.t3 pior=2.94 fg=#8e97a5 bg=#ffffff [.appbar-title > .tiny.t3]
+   chip chip-reservado ratio=5.96 (esp 4.5:1) fg=#1b4fd0 bg=#e8f0ff ok
+   chip chip-planejado ratio=4.2 (esp 4.5:1) fg=#64748b bg=#eef1f5 FALHA
+   chip chip-pago ratio=3.11 (esp 4.5:1) fg=#0f9d58 bg=#e6f5ec FALHA
+   incompletos(contraste) chips: 0 total incompletos: 4
+
+## 360 | light (data-theme=light) | Dias (menu de status aberto) | chips: Planejado, Reservado, Pago, Cancelado
+  aria-input-field-name (serious) nos=1 ex=ul 
+  aria-required-children (critical) nos=1 ex=ul 
+  aria-required-parent (critical) nos=4 ex=.chip-planejado.chip[role="option"] 
+  color-contrast (serious) nos=10 ex=.appbar-title > .tiny.t3 pior=2.94 fg=#8e97a5 bg=#ffffff [.appbar-title > .tiny.t3]
+  listitem (serious) nos=4 ex=li:nth-child(1) 
+   chip chip-reservado ratio=5.96 (esp 4.5:1) fg=#1b4fd0 bg=#e8f0ff ok
+   chip chip-planejado ratio=4.2 (esp 4.5:1) fg=#64748b bg=#eef1f5 FALHA
+   chip chip-pago ratio=3.11 (esp 4.5:1) fg=#0f9d58 bg=#e6f5ec FALHA
+   chip chip-cancelado ratio=4.27 (esp 4.5:1) fg=#d1372f bg=#fdecea FALHA
+   incompletos(contraste) chips: 0 total incompletos: 4
+
+## 360 | light (data-theme=light) | Custos | chips: 
+  color-contrast (serious) nos=10 ex=.tiny pior=2.94 fg=#8e97a5 bg=#ffffff [.tiny]
+   incompletos(contraste) chips: 0 total incompletos: 2
+
+## 360 | dark (data-theme=dark) | Dias | chips: Planejado ▾, Reservado ▾, Pago ▾, Cancelado ▾
+  color-contrast (serious) nos=7 ex=.appbar-title > .tiny.t3 pior=4.13 fg=#717d8d bg=#171b21 [.appbar-title > .tiny.t3]
+   chip chip-reservado ratio=7.19 (esp 4.5:1) fg=#8ab0ff bg=#1a2438 ok
+   chip chip-pago ratio=6.96 (esp 4.5:1) fg=#3ac07d bg=#12241b ok
+   chip chip-cancelado ratio=5.36 (esp 4.5:1) fg=#f0645c bg=#2d1715 ok
+   incompletos(contraste) chips: 0 total incompletos: 4
+
+## 360 | dark (data-theme=dark) | Dias (menu de status aberto) | chips: Planejado, Reservado, Pago, Cancelado
+  aria-input-field-name (serious) nos=1 ex=ul 
+  aria-required-children (critical) nos=1 ex=ul 
+  aria-required-parent (critical) nos=4 ex=.chip-planejado.chip[role="option"] 
+  color-contrast (serious) nos=7 ex=.appbar-title > .tiny.t3 pior=4.13 fg=#717d8d bg=#171b21 [.appbar-title > .tiny.t3]
+  listitem (serious) nos=4 ex=li:nth-child(1) 
+   chip chip-planejado ratio=6.09 (esp 4.5:1) fg=#94a3b8 bg=#1e242c ok
+   chip chip-reservado ratio=7.19 (esp 4.5:1) fg=#8ab0ff bg=#1a2438 ok
+   chip chip-pago ratio=6.96 (esp 4.5:1) fg=#3ac07d bg=#12241b ok
+   chip chip-cancelado ratio=5.36 (esp 4.5:1) fg=#f0645c bg=#2d1715 ok
+   incompletos(contraste) chips: 0 total incompletos: 5
+
+## 360 | dark (data-theme=dark) | Custos | chips: 
+  color-contrast (serious) nos=10 ex=.tiny pior=4.13 fg=#717d8d bg=#171b21 [.tiny]
+   incompletos(contraste) chips: 0 total incompletos: 2
+
+## 1366 | light (data-theme=light) | Dias | chips: Planejado ▾, Reservado ▾, Pago ▾, Cancelado ▾
+  color-contrast (serious) nos=12 ex=.appbar-title > .tiny.t3 pior=2.94 fg=#8e97a5 bg=#ffffff [.appbar-title > .tiny.t3]
+   chip chip-reservado ratio=5.96 (esp 4.5:1) fg=#1b4fd0 bg=#e8f0ff ok
+   chip chip-planejado ratio=4.2 (esp 4.5:1) fg=#64748b bg=#eef1f5 FALHA
+   chip chip-pago ratio=3.11 (esp 4.5:1) fg=#0f9d58 bg=#e6f5ec FALHA
+   chip chip-cancelado ratio=4.27 (esp 4.5:1) fg=#d1372f bg=#fdecea FALHA
+   incompletos(contraste) chips: 0 total incompletos: 6
+
+## 1366 | light (data-theme=light) | Dias (menu de status aberto) | chips: Planejado, Reservado, Pago, Cancelado
+  aria-input-field-name (serious) nos=1 ex=ul 
+  aria-required-children (critical) nos=1 ex=ul 
+  aria-required-parent (critical) nos=4 ex=.chip-planejado.chip[role="option"] 
+  color-contrast (serious) nos=14 ex=.appbar-title > .tiny.t3 pior=2.94 fg=#8e97a5 bg=#ffffff [.appbar-title > .tiny.t3]
+  listitem (serious) nos=4 ex=li:nth-child(1) 
+   chip chip-reservado ratio=5.96 (esp 4.5:1) fg=#1b4fd0 bg=#e8f0ff ok
+   chip chip-planejado ratio=4.2 (esp 4.5:1) fg=#64748b bg=#eef1f5 FALHA
+   chip chip-pago ratio=3.11 (esp 4.5:1) fg=#0f9d58 bg=#e6f5ec FALHA
+   chip chip-cancelado ratio=4.27 (esp 4.5:1) fg=#d1372f bg=#fdecea FALHA
+   incompletos(contraste) chips: 0 total incompletos: 5
+
+## 1366 | light (data-theme=light) | Custos | chips: 
+  color-contrast (serious) nos=11 ex=.tiny pior=2.94 fg=#8e97a5 bg=#ffffff [.tiny]
+   incompletos(contraste) chips: 0 total incompletos: 2
+
+## 1366 | dark (data-theme=dark) | Dias | chips: Planejado ▾, Reservado ▾, Pago ▾, Cancelado ▾
+  color-contrast (serious) nos=7 ex=.appbar-title > .tiny.t3 pior=4.13 fg=#717d8d bg=#171b21 [.appbar-title > .tiny.t3]
+   chip chip-planejado ratio=6.09 (esp 4.5:1) fg=#94a3b8 bg=#1e242c ok
+   chip chip-reservado ratio=7.19 (esp 4.5:1) fg=#8ab0ff bg=#1a2438 ok
+   chip chip-pago ratio=6.96 (esp 4.5:1) fg=#3ac07d bg=#12241b ok
+   incompletos(contraste) chips: 0 total incompletos: 5
+
+## 1366 | dark (data-theme=dark) | Dias (menu de status aberto) | chips: Planejado, Reservado, Pago, Cancelado
+  aria-input-field-name (serious) nos=1 ex=ul 
+  aria-required-children (critical) nos=1 ex=ul 
+  aria-required-parent (critical) nos=4 ex=.chip-planejado.chip[role="option"] 
+  color-contrast (serious) nos=7 ex=.appbar-title > .tiny.t3 pior=4.13 fg=#717d8d bg=#171b21 [.appbar-title > .tiny.t3]
+  listitem (serious) nos=4 ex=li:nth-child(1) 
+   chip chip-planejado ratio=6.09 (esp 4.5:1) fg=#94a3b8 bg=#1e242c ok
+   chip chip-reservado ratio=7.19 (esp 4.5:1) fg=#8ab0ff bg=#1a2438 ok
+   chip chip-pago ratio=6.96 (esp 4.5:1) fg=#3ac07d bg=#12241b ok
+   chip chip-cancelado ratio=5.36 (esp 4.5:1) fg=#f0645c bg=#2d1715 ok
+   incompletos(contraste) chips: 0 total incompletos: 5
+
+## 1366 | dark (data-theme=dark) | Custos | chips: 
+  color-contrast (serious) nos=10 ex=.tiny pior=4.13 fg=#717d8d bg=#171b21 [.tiny]
+   incompletos(contraste) chips: 0 total incompletos: 2

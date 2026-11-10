@@ -1,0 +1,15 @@
+{"type":"object","additionalProperties":false,"required":["itens","duvidas"],"properties":{
+ "itens":{"type":"array","items":{"type":"object","additionalProperties":false,
+  "required":["tipo","descricao","valor","data","cidade","horario","quemPagou","divisao","status","observacao"],
+  "properties":{
+   "tipo":{"type":"string","enum":["alimentacao","atracao","transporte","outra"]},
+   "descricao":{"type":"string","description":"Nome do lugar ou do gasto, como a pessoa falou"},
+   "valor":{"type":["number","null"],"description":"Valor em reais, duas casas"},
+   "data":{"type":"string","description":"AAAA-MM-DD"},
+   "cidade":{"type":"string"},
+   "horario":{"type":["string","null"],"description":"HH:MM, se dito"},
+   "quemPagou":{"type":["string","null"],"description":"id do participante"},
+   "divisao":{"type":["object","null"],"additionalProperties":{"type":"number"},"description":"id do participante -> percentual"},
+   "status":{"type":"string","enum":["Planejado","Reservado","Pago"]},
+   "observacao":{"type":["string","null"]}}}},
+ "duvidas":{"type":"array","items":{"type":"string"}}}}
