@@ -6,6 +6,7 @@
 // verdade porque foi o que passou pelas correções de bug validadas.
 
 import { num } from './format.js';
+import { isValidLink } from './links.js';
 export const STATUS_OPTIONS = ['Planejado', 'Reservado', 'Pago', 'Cancelado'];
 export const CHECKLIST_STATUS_OPTIONS = ['Pendente', 'Em andamento', 'Concluído', 'Cancelado'];
 export const PRIORITY_OPTIONS = ['Alta', 'Média', 'Baixa'];
@@ -80,6 +81,11 @@ export function normalizeState(s) {
     }
   );
   migrateParticipants(s);
+  // Documentos gerais da viagem: só links https válidos chegam à tela. Um link
+  // `javascript:` gravado direto no banco ou vindo de um JSON importado seria
+  // aberto na origem do app ao clicar em "Abrir" (issue #18).
+  s.settings.documents = (Array.isArray(s.settings.documents) ? s.settings.documents : [])
+    .filter((d) => d && isValidLink(d.url));
   return s;
 }
 

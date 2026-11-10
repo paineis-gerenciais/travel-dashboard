@@ -155,7 +155,9 @@ test.describe('fluxos críticos', () => {
     // despesa, cada participante deve um valor próprio. A tela mostra, por
     // pessoa, quanto pagou e quanto deve.
     await expect(dialogo.getByText('Total da viagem')).toBeVisible();
-    await expect(dialogo.getByText(/Pagou .* · deve /).first()).toBeVisible();
+    // Valores, não só rótulos: 2 diárias de R$ 100 divididas igualmente entre
+    // os 2 viajantes padrão; ninguém marcado como pagador ainda.
+    await expect(dialogo.getByText('Pagou R$ 0,00 · deve R$ 100,00')).toHaveCount(2);
     await expect(dialogo.getByRole('heading', { name: 'Acerto' })).toBeVisible();
 
     // e dá para expandir os gastos de um participante (lista editável)
@@ -260,7 +262,12 @@ test.describe('fluxos críticos', () => {
   test('compartilhar abre a folha de convite', async ({ page }) => {
     await criarViagem(page, 'Viagem Share');
     await page.getByRole('button', { name: 'Mais' }).click();
-    await page.getByRole('button', { name: /abrir/i }).first().click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    // Pelo nome acessível, não pela posição: o primeiro "Abrir" da tela Mais é
+    // o do Checklist, e o teste antigo passava sem tocar no convite (issue #19).
+    await page.getByRole('button', { name: 'Abrir Compartilhar' }).click();
+    const folha = page.getByRole('dialog', { name: 'Compartilhar' });
+    await expect(folha).toBeVisible();
+    // o dono vê o campo de convite e o botão de convidar
+    await expect(folha.getByRole('button', { name: 'Convidar' })).toBeVisible();
   });
 });

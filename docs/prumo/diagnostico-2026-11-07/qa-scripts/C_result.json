@@ -1,0 +1,104 @@
+{
+ "360": {
+  "login": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "onboarding": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "minhas-viagens": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "dias": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "cidades": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "custos": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "mais": {
+   "scrollWidth": 360,
+   "innerWidth": 360,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  }
+ },
+ "1366": {
+  "login": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "onboarding": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "minhas-viagens": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "dias": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "cidades": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "custos": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  },
+  "mais": {
+   "scrollWidth": 1366,
+   "innerWidth": 1366,
+   "hscroll": false,
+   "foraDaTela": [],
+   "nForaDaTela": 0
+  }
+ }
+}

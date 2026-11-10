@@ -1110,3 +1110,44 @@ describe('itens legados sem id', () => {
     expect(s.checklist[0].id).not.toBe(s.checklist[1].id);
   });
 });
+
+// Issue #18: documentos gerais da viagem só com link https válido. Um link
+// `javascript:` gravado direto no banco ou vindo de "Importar JSON" não pode
+// chegar à tela como link clicável.
+describe('documentos gerais: links seguros', () => {
+  const comDocs = (documents) => normalizeState({ cities: [], settings: { documents } });
+
+  it('mantém links https e descarta javascript:, data: e http:', () => {
+    const s = comDocs([
+      { id: 'a', label: 'Seguro', url: 'https://exemplo.com/apolice.pdf' },
+      { id: 'b', label: 'Ataque', url: 'javascript:alert(document.domain)' },
+      { id: 'c', label: 'Embutido', url: 'data:text/html,<script>alert(1)</script>' },
+      { id: 'd', label: 'Sem TLS', url: 'http://exemplo.com/doc' },
+      { id: 'e', label: 'Vazio', url: '' },
+      null,
+    ]);
+    expect(s.settings.documents.map((d) => d.id)).toEqual(['a']);
+  });
+
+  it('JSON importado com link javascript: não gera link clicável', () => {
+    // o caminho de importação passa por normalizeState (Mais.jsx -> replaceState)
+    const importado = JSON.parse(JSON.stringify({
+      cities: [],
+      settings: { documents: [{ id: 'x', label: 'Passaporte', url: 'JaVaScRiPt:alert(1)' }] },
+    }));
+    const s = normalizeState(importado);
+    expect(s.settings.documents).toEqual([]);
+    expect(collectLinks(s).some((l) => /^javascript:/i.test(l.url))).toBe(false);
+  });
+
+  it('recusa link com usuário ou senha embutidos (destino disfarçado)', () => {
+    expect(isValidLink('https://drive.google.com@outro.exemplo/arquivo')).toBe(false);
+    expect(isValidLink('https://usuario:senha@exemplo.com/doc')).toBe(false);
+    expect(isValidLink('https://exemplo.com/doc?ref=a@b')).toBe(true);
+  });
+
+  it('documents ausente ou malformado vira lista vazia', () => {
+    expect(normalizeState({ cities: [] }).settings.documents).toEqual([]);
+    expect(comDocs('nao-e-lista').settings.documents).toEqual([]);
+  });
+});
