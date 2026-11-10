@@ -128,6 +128,45 @@ export function kindPorAba(nome) {
   return achado?.kind || null;
 }
 
+/* ---------- Arquivo JSON de importação ---------- */
+
+export const FORMATO_IMPORTACAO = 'planilha-viagem';
+export const VERSAO_IMPORTACAO = 1;
+
+/**
+ * Converte o JSON de importação em matrizes iguais às que `lerPlanilha` devolve
+ * (cabeçalho na ordem do ESQUEMA + uma linha por objeto), para passar pela mesma
+ * validação e prévia. Abas desconhecidas vão em `ignoradas`; `erro` recusa o
+ * arquivo inteiro. Pura: lê só chaves próprias e ignora colunas desconhecidas.
+ */
+export function matrizesDeJson(obj) {
+  const proprio = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const ehObjeto = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+  const vazio = { matrizes: {}, ignoradas: [] };
+
+  if (!ehObjeto(obj) || obj.formato !== FORMATO_IMPORTACAO) {
+    return { ...vazio, erro: `formato diferente de "${FORMATO_IMPORTACAO}"` };
+  }
+  if (obj.versao !== VERSAO_IMPORTACAO) {
+    return { ...vazio, erro: `versão ${String(obj.versao)} não suportada (esperada: ${VERSAO_IMPORTACAO})` };
+  }
+  if (!ehObjeto(obj.abas)) return { ...vazio, erro: 'campo "abas" ausente ou inválido' };
+
+  const matrizes = {};
+  const ignoradas = [];
+  Object.keys(obj.abas).forEach((nome) => {
+    const kind = kindPorAba(nome);
+    const linhas = obj.abas[nome];
+    if (!kind || !Array.isArray(linhas)) { ignoradas.push(nome); return; }
+    const cols = ESQUEMA[kind].colunas.map((c) => c.col);
+    matrizes[kind] = [
+      cols,
+      ...linhas.map((l) => cols.map((c) => (ehObjeto(l) && proprio(l, c) ? l[c] : ''))),
+    ];
+  });
+  return { matrizes, ignoradas, erro: null };
+}
+
 /* ---------- Leitura de células ---------- */
 
 const ehVazio = (v) => v === null || v === undefined || String(v).trim() === '';

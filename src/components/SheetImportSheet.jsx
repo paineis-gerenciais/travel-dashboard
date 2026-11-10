@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
 import { useTrip } from '../store/TripProvider.jsx';
-import { ESQUEMA, validarAba, mesclarPlanilha, kindPorAba } from '../domain/sheet.js';
+import { ESQUEMA, validarAba, mesclarPlanilha, matrizesDeJson } from '../domain/sheet.js';
 import { baixarPlanilha, lerPlanilha, lerTextoColado } from '../lib/sheetFile.js';
 import { mainCities } from '../domain/dates.js';
 import { track } from '../lib/analytics.js';
 import { logError } from '../lib/logger.js';
 import { Sheet, Row, Banner, Field, useToast } from './ui.jsx';
+
+const LIMITE_JSON = 2 * 1024 * 1024; // 2 MB
 
 /**
  * Importação e exportação por planilha.
@@ -70,8 +72,27 @@ export default function SheetImportSheet({ onClose }) {
     const file = ev.target.files?.[0];
     ev.target.value = '';
     if (!file) return;
+    const ehJson = /\.json$/i.test(file.name) || file.type === 'application/json';
+    if (ehJson && file.size > LIMITE_JSON) {
+      notify('Arquivo JSON grande demais (máximo 2 MB).', 'error');
+      return;
+    }
     setOcupado(true);
     try {
+      if (ehJson) {
+        const r = matrizesDeJson(JSON.parse(await file.text()));
+        if (r.erro) {
+          notify(`Arquivo JSON não reconhecido: ${r.erro}`, 'error');
+          return;
+        }
+        if (Object.keys(r.matrizes).length === 0) {
+          notify('Nenhuma aba reconhecida. Use o modelo do app.', 'error');
+          return;
+        }
+        preparar(r.matrizes);
+        track('sheet_json_read');
+        return;
+      }
       const matrizes = await lerPlanilha(file);
       if (Object.keys(matrizes).length === 0) {
         notify('Nenhuma aba reconhecida. Use o modelo do app.', 'error');
@@ -81,7 +102,7 @@ export default function SheetImportSheet({ onClose }) {
       track('sheet_file_read');
     } catch (e) {
       logError('lerPlanilha', e);
-      notify('Não foi possível ler o arquivo.', 'error');
+      notify(e instanceof SyntaxError ? 'Arquivo JSON inválido.' : 'Não foi possível ler o arquivo.', 'error');
     } finally { setOcupado(false); }
   };
 
@@ -128,7 +149,7 @@ export default function SheetImportSheet({ onClose }) {
                 value={<button className="btn-sm" onClick={baixarModelo} disabled={ocupado}>Baixar</button>} />
               <Row icon="📤" title="Exportar dados atuais" sub="Mesmo formato — edite e reimporte"
                 value={<button className="btn-sm" onClick={exportarAtual} disabled={ocupado}>Exportar</button>} />
-              <Row icon="📥" title="Enviar planilha preenchida" sub="Arquivo .xlsx"
+              <Row icon="📥" title="Enviar planilha preenchida" sub="Arquivo .xlsx ou .json"
                 value={<button className="btn-primary btn-sm" onClick={() => fileRef.current.click()} disabled={ocupado}>Enviar</button>} />
               <Row icon="📋" title="Colar da planilha" sub="Copie as células e cole aqui"
                 value={<button className="btn-sm" onClick={() => setModo('colar')}>Colar</button>} />
@@ -142,7 +163,7 @@ export default function SheetImportSheet({ onClose }) {
             <input
               ref={fileRef}
               type="file"
-              accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              accept=".xlsx,.xlsm,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               style={{ display: 'none' }}
               onChange={escolherArquivo}
             />
