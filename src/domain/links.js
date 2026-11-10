@@ -8,13 +8,18 @@
 // Esta camada é pura e testável: validação, rótulo e a coleta que alimenta a
 // central de anexos.
 
-/** Só `https`. Link em texto puro não vira link; `http` é recusado. */
+/**
+ * Só `https`. Link em texto puro não vira link; `http` é recusado.
+ * Link com usuário ou senha embutidos também é recusado: em
+ * `https://drive.google.com@outro.exemplo` o destino real é `outro.exemplo`,
+ * e o texto engana quem lê (revisão de segurança do PR #36).
+ */
 export function isValidLink(url) {
   const v = String(url || '').trim();
   if (!v) return false;
   try {
     const u = new URL(v);
-    return u.protocol === 'https:';
+    return u.protocol === 'https:' && !u.username && !u.password;
   } catch {
     return false;
   }

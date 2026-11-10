@@ -44,7 +44,7 @@ export function TripsProvider({ user, children }) {
       });
     })();
     return () => { alive = false; if (unsub) unsub(); };
-  }, [user.uid]);
+  }, [user.uid, user.emailVerified]); // reroda o aceite quando o e-mail é confirmado
 
   const actions = {
     openTrip: (id) => setActiveTripId(id),

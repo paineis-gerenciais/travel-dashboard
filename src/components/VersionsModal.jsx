@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTrip } from '../store/TripProvider.jsx';
+import { useTrips } from '../store/TripsProvider.jsx';
 import { money } from '../domain/format.js';
 import { totals } from '../domain/costs.js';
 import { allPlanningDates, mainCities } from '../domain/dates.js';
@@ -9,6 +10,9 @@ import { Row, EmptyState, Sheet } from './ui.jsx';
 /** Conteúdo de "versões salvas". Renderiza dentro de um Sheet (sem chrome próprio). */
 export default function VersionsModal({ tripId, onClose }) {
   const { state, actions } = useTrip();
+  // Só o dono apaga versões (regra do Firestore, issue #17): o botão some para os demais.
+  const { trips, user } = useTrips();
+  const isOwner = trips.find((t) => t.id === tripId)?.ownerId === user?.uid;
   const [versions, setVersions] = useState([]);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -81,7 +85,9 @@ export default function VersionsModal({ tripId, onClose }) {
             <Row key={v.id} icon="🗂️" title={v.name} sub={`${v.dateText} · ${v.days} dias · ${money(v.total)}`}>
               <button className="btn-sm" onClick={() => doLoad(v.id)} disabled={busy}>Carregar</button>
               <button className="btn-ghost btn-sm" onClick={() => setConfirmOverwrite(v)} disabled={busy}>Sobrescrever</button>
-              <button className="btn-danger btn-sm" onClick={() => doDelete(v.id)} disabled={busy}>Excluir</button>
+              {isOwner && (
+                <button className="btn-danger btn-sm" onClick={() => doDelete(v.id)} disabled={busy}>Excluir</button>
+              )}
             </Row>
           ))}
         </div>

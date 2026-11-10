@@ -6,7 +6,8 @@ export default defineConfig({
   timeout: 45000,
   fullyParallel: false,           // os testes compartilham o emulador
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  // No CI: anotações no GitHub e relatório HTML para o artefato de falha.
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',

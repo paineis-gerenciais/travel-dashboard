@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createInvite, listMembers, listInvitesForTrip, revokeMember, cancelInvite } from '../lib/tripData.js';
 import { inviteMessage, whatsappUrl, mailtoUrl, nativeShare, copyToClipboard } from '../lib/invite.js';
+import { useTrips } from '../store/TripsProvider.jsx';
 import { Row, Banner, Sheet } from './ui.jsx';
 
 /** Conteúdo de "compartilhar". Renderiza dentro de um Sheet (sem chrome próprio). */
@@ -11,6 +12,12 @@ export default function ShareModal({ tripId, tripName, user, isOwner }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sendTo, setSendTo] = useState(null); // e-mail do convite a enviar
+  // Quem tem acesso vem de `memberUids` da viagem (a fonte que as regras usam);
+  // `members/` só completa nome e e-mail.
+  const { trips } = useTrips();
+  const trip = trips.find((t) => t.id === tripId);
+  const ownerId = trip?.ownerId;
+  const memberUids = trip?.memberUids || [];
 
   const refresh = async () => {
     try {
@@ -24,6 +31,12 @@ export default function ShareModal({ tripId, tripName, user, isOwner }) {
     setError('');
     const e = email.trim().toLowerCase();
     if (!e) { setError('Informe um e-mail.'); return; }
+    // Quem já está na viagem não recebe convite de novo: reabrir o convite
+    // aceito deixaria um convite pendente "dormente" para essa pessoa.
+    if (invites.some((i) => i.emailConvidado === e && i.status === 'aceito' && memberUids.includes(i.acceptedByUid))) {
+      setError('Essa pessoa já tem acesso à viagem.');
+      return;
+    }
     setBusy(true);
     try {
       await createInvite(tripId, tripName, user, e);
@@ -33,6 +46,9 @@ export default function ShareModal({ tripId, tripName, user, isOwner }) {
     } catch (err) { setError('Falha ao convidar: ' + err.message); }
     finally { setBusy(false); }
   };
+
+  // O e-mail do convite aceito é a fonte mais confiável (o próprio perfil é editável pelo membro).
+  const emailDoConvite = (uid) => invites.find((i) => i.acceptedByUid === uid)?.emailConvidado;
 
   const pendentes = invites.filter((i) => i.status === 'pendente');
 
@@ -61,16 +77,26 @@ export default function ShareModal({ tripId, tripName, user, isOwner }) {
 
       <h3 style={{ margin: 0 }}>Com acesso</h3>
       <div className="card card-flush">
-        {members.map((m) => (
-          <Row key={m.uid} icon={m.role === 'owner' ? '👑' : '🤝'}
-            title={m.displayName || m.email} sub={`${m.email} · ${m.role === 'owner' ? 'Dono' : 'Editor'}`}>
-            {isOwner && m.role !== 'owner' && (
-              <button className="btn-danger btn-sm" onClick={async () => { await revokeMember(tripId, m.uid); await refresh(); }}>
-                Remover
-              </button>
-            )}
-          </Row>
-        ))}
+        {memberUids.map((uid) => {
+          const m = members.find((x) => x.uid === uid);
+          const souDono = uid === ownerId;
+          const titulo = m ? (m.displayName || m.email || 'Membro sem perfil') : 'Membro sem perfil';
+          const sub = `${m?.email ? m.email + ' · ' : ''}${souDono ? 'Dono' : 'Editor'}`;
+          return (
+            <Row key={uid} icon={souDono ? '👑' : '🤝'} title={titulo} sub={sub}>
+              {isOwner && !souDono && (
+                <button className="btn-danger btn-sm" onClick={async () => {
+                  // Só o e-mail do convite aceito por este uid: o e-mail do perfil é
+                  // editável pelo próprio membro e poderia apagar o convite de outra pessoa.
+                  try { await revokeMember(tripId, uid, emailDoConvite(uid)); await refresh(); }
+                  catch (err) { setError('Falha ao remover: ' + err.message); }
+                }}>
+                  Remover
+                </button>
+              )}
+            </Row>
+          );
+        })}
       </div>
 
       {isOwner && pendentes.length > 0 && (
