@@ -1,0 +1,652 @@
+{
+ "360": {
+  "tabbar": [
+   "🗓️Dias",
+   "📍Cidades",
+   "🗺️Mapa",
+   "💰Custos",
+   "⋯Mais"
+  ],
+  "tabbarTabsAlcancados": [
+   {
+    "i": 0,
+    "tag": "BUTTON",
+    "label": "Dias",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 1,
+    "tag": "BUTTON",
+    "label": "Cidades",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 2,
+    "tag": "BUTTON",
+    "label": "Mapa",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 3,
+    "tag": "BUTTON",
+    "label": "Custos",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 4,
+    "tag": "BUTTON",
+    "label": "Mais",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   }
+  ],
+  "qtdTabsTrail": 60,
+  "passosAteAbrir": 3,
+  "sheetOpen": 1,
+  "aberto": {
+   "tag": "DIV",
+   "label": "Compartilhar",
+   "cls": "sheet",
+   "outline": "solid 2px rgb(47, 109, 246)",
+   "shadow": "rgba(16, 24, 40, 0.16) 0px -8px 32px 0px",
+   "inDialog": true,
+   "fv": true
+  },
+  "tabs15": [
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   }
+  ],
+  "aposEsc": {
+   "tag": "BUTTON",
+   "label": "Abrir Compartilhar",
+   "cls": "btn-ghost btn-sm",
+   "outline": "solid 2px rgb(47, 109, 246)",
+   "shadow": "none",
+   "inDialog": false,
+   "fv": true
+  },
+  "dialogosAposEsc": 0,
+  "reaberto": {
+   "tag": "DIV",
+   "label": "Compartilhar",
+   "cls": "sheet",
+   "outline": "solid 2px rgb(47, 109, 246)",
+   "shadow": "rgba(16, 24, 40, 0.16) 0px -8px 32px 0px",
+   "inDialog": true,
+   "fv": true
+  },
+  "shiftTab": [
+   {
+    "tag": "BUTTON",
+    "label": "Limpar",
+    "cls": "btn-danger btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Sair",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Trocar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true
+   }
+  ],
+  "trailResumo": [
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️",
+   "Anexos",
+   "Mensagens",
+   "Dias",
+   "Cidades",
+   "Mapa",
+   "Custos",
+   "Mais",
+   "01/06/2030",
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️",
+   "Anexos",
+   "Mensagens",
+   "Dias",
+   "Cidades",
+   "Mapa",
+   "Custos",
+   "Mais",
+   "01/06/2030",
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️",
+   "Anexos",
+   "Mensagens",
+   "Dias",
+   "Cidades",
+   "Mapa",
+   "Custos",
+   "Mais",
+   "01/06/2030",
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️"
+  ]
+ },
+ "1366": {
+  "tabbar": [
+   "🗓️Dias",
+   "📍Cidades",
+   "🗺️Mapa",
+   "💰Custos",
+   "⋯Mais"
+  ],
+  "tabbarTabsAlcancados": [
+   {
+    "i": 0,
+    "tag": "BUTTON",
+    "label": "Dias",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgb(241, 243, 246)"
+   },
+   {
+    "i": 1,
+    "tag": "BUTTON",
+    "label": "Cidades",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 2,
+    "tag": "BUTTON",
+    "label": "Mapa",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 3,
+    "tag": "BUTTON",
+    "label": "Custos",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   },
+   {
+    "i": 4,
+    "tag": "BUTTON",
+    "label": "Mais",
+    "cls": "",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true,
+    "bg": "rgba(0, 0, 0, 0)"
+   }
+  ],
+  "qtdTabsTrail": 60,
+  "passosAteAbrir": 3,
+  "sheetOpen": 1,
+  "aberto": {
+   "tag": "DIV",
+   "label": "Compartilhar",
+   "cls": "sheet",
+   "outline": "solid 2px rgb(47, 109, 246)",
+   "shadow": "rgba(16, 24, 40, 0.16) 0px -8px 32px 0px",
+   "inDialog": true,
+   "fv": true
+  },
+  "tabs15": [
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Fechar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "INPUT",
+    "label": "",
+    "cls": "",
+    "outline": "none 3px rgb(22, 24, 29)",
+    "shadow": "rgb(232, 240, 255) 0px 0px 0px 3px",
+    "inDialog": true,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Convidar",
+    "cls": "btn-primary",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": true,
+    "fv": true
+   }
+  ],
+  "aposEsc": {
+   "tag": "BUTTON",
+   "label": "Abrir Compartilhar",
+   "cls": "btn-ghost btn-sm",
+   "outline": "solid 2px rgb(47, 109, 246)",
+   "shadow": "none",
+   "inDialog": false,
+   "fv": true
+  },
+  "dialogosAposEsc": 0,
+  "reaberto": {
+   "tag": "DIV",
+   "label": "Compartilhar",
+   "cls": "sheet",
+   "outline": "solid 2px rgb(47, 109, 246)",
+   "shadow": "rgba(16, 24, 40, 0.16) 0px -8px 32px 0px",
+   "inDialog": true,
+   "fv": true
+  },
+  "shiftTab": [
+   {
+    "tag": "BUTTON",
+    "label": "Limpar",
+    "cls": "btn-danger btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Sair",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true
+   },
+   {
+    "tag": "BUTTON",
+    "label": "Trocar",
+    "cls": "btn-ghost btn-sm",
+    "outline": "solid 2px rgb(47, 109, 246)",
+    "shadow": "none",
+    "inDialog": false,
+    "fv": true
+   }
+  ],
+  "trailResumo": [
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️",
+   "Anexos",
+   "Mensagens",
+   "Dias",
+   "Cidades",
+   "Mapa",
+   "Custos",
+   "Mais",
+   "01/06/2030",
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️",
+   "Anexos",
+   "Mensagens",
+   "Dias",
+   "Cidades",
+   "Mapa",
+   "Custos",
+   "Mais",
+   "01/06/2030",
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️",
+   "Anexos",
+   "Mensagens",
+   "Dias",
+   "Cidades",
+   "Mapa",
+   "Custos",
+   "Mais",
+   "01/06/2030",
+   "02/06/2030",
+   "03/06/2030",
+   "Editar",
+   "+ Transporte",
+   "+ Refeição",
+   "+ Atração",
+   "+ Outra despesa",
+   "Próximo →",
+   "Viagem TecladoSalvando…📎💬🗓️"
+  ]
+ }
+}

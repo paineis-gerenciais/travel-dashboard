@@ -1,0 +1,156 @@
+{
+ "360": {
+  "login": [],
+  "onboarding": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 3,
+    "sample": ".stack > .t2",
+    "html": "<p class=\"t2\" style=\"margin: 0px;\">Aqui você reúne datas, roteiro, hospedagem e custos — tudo o que hoje fica espalhado entre conversas, e-m",
+    "summary": "Element has insufficient color contrast of 3.85 (foreground color: #717984, background color: #eff0f1, font size: 11.3pt (15px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "minhas-viagens": [],
+  "dias": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 7,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "dias-tabs": 3,
+  "cidades": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 7,
+    "sample": ".tiny",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "custos": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 10,
+    "sample": ".tiny",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "mais": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 6,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "folha-compartilhar": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 6,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "folha-planilha": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 6,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ]
+ },
+ "1366": {
+  "login": [],
+  "onboarding": [],
+  "minhas-viagens": [],
+  "dias": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 7,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvando…</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "dias-tabs": 3,
+  "cidades": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 8,
+    "sample": ".tiny",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "custos": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 11,
+    "sample": ".tiny",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "mais": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 7,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "folha-compartilhar": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 6,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ],
+  "folha-planilha": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "nodes": 6,
+    "sample": ".appbar-title > .tiny.t3",
+    "html": "<span class=\"tiny t3\">Salvo</span>",
+    "summary": "Element has insufficient color contrast of 2.94 (foreground color: #8e97a5, background color: #ffffff, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+   }
+  ]
+ }
+}

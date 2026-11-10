@@ -6,6 +6,8 @@ import { Row, Sheet, EmptyState } from './ui.jsx';
 import SettingsSheet from './SettingsSheet.jsx';
 import Onboarding, { onboardingPending } from './Onboarding.jsx';
 import { track } from '../lib/analytics.js';
+import { auth } from '../lib/firebase.js';
+import { sendEmailVerification } from 'firebase/auth';
 
 function templateState() {
   const base = new Date();
@@ -34,6 +36,9 @@ export default function TripPicker({ onLogout, theme, toggleTheme, refreshUser }
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [verifMsg, setVerifMsg] = useState('');
+  // Conta de e-mail e senha ainda não confirmada: convites só valem depois disso.
+  const precisaConfirmar = !!user.email && user.emailVerified === false;
   // T-1.3: onboarding só no primeiro uso (e só para quem ainda não tem viagem)
   const [showOnboarding, setShowOnboarding] = useState(() => onboardingPending());
   // sorteia uma vez por visita à tela, não a cada re-render
@@ -50,6 +55,29 @@ export default function TripPicker({ onLogout, theme, toggleTheme, refreshUser }
   const closeSettings = () => {
     setShowSettings(false);
     refreshUser?.(); // reflete nome/celular/e-mail vinculados sem precisar relogar
+  };
+
+  const reenviar = async () => {
+    setVerifMsg('');
+    try {
+      await sendEmailVerification(auth.currentUser);
+      setVerifMsg('Enviamos o link para o seu e-mail.');
+    } catch (e) {
+      setVerifMsg('Não foi possível reenviar agora. Tente de novo em alguns minutos.');
+    }
+  };
+
+  // Depois de clicar no link do e-mail, recarrega a conta e o token para valer já.
+  const jaConfirmei = async () => {
+    setVerifMsg('');
+    try {
+      await auth.currentUser.reload();
+      await auth.currentUser.getIdToken(true);
+      refreshUser?.();
+      if (!auth.currentUser.emailVerified) setVerifMsg('Ainda não consta como confirmado.');
+    } catch (e) {
+      setVerifMsg('Não foi possível verificar agora. Tente de novo.');
+    }
   };
 
   return (
@@ -71,6 +99,16 @@ export default function TripPicker({ onLogout, theme, toggleTheme, refreshUser }
 
       <div className="screen">
         <div className="container stack">
+          {precisaConfirmar && (
+            <div className="card" role="status">
+              <p className="small" style={{ margin: 0 }}>Confirme seu e-mail para aceitar convites</p>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+                <button className="btn-sm" onClick={reenviar}>Reenviar</button>
+                <button className="btn-ghost btn-sm" onClick={jaConfirmei}>Já confirmei</button>
+              </div>
+              {verifMsg && <p className="small t2" style={{ margin: '6px 0 0' }}>{verifMsg}</p>}
+            </div>
+          )}
           <div className="card" style={{ background: 'var(--accent-soft)', border: 0 }}>
             <p style={{ margin: 0, fontSize: 'var(--fs-4)', fontWeight: 600 }}>
               Olá {greetingName(user)}, bem-vindo ao seu planejador de viagens!

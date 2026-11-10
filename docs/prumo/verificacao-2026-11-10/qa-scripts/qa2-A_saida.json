@@ -1,0 +1,126 @@
+{
+ "360": [
+  {
+   "passo": "1 folha aberta (cidade nova)",
+   "folha": {
+    "cidade": "",
+    "checkin": "",
+    "checkout": "",
+    "erro": null
+   },
+   "lista": [
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias",
+    "Cidade sem nome | Sem datas"
+   ]
+  },
+  {
+   "passo": "2 apos Cidade=Porto",
+   "folha": {
+    "cidade": "Porto",
+    "checkin": "",
+    "checkout": "",
+    "erro": null
+   },
+   "lista": [
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias",
+    "Porto | Sem datas"
+   ]
+  },
+  {
+   "passo": "3 apos Check-in=2030-06-01",
+   "folha": {
+    "cidade": "Lisboa",
+    "checkin": "2030-06-10",
+    "checkout": "2030-06-13",
+    "erro": null
+   },
+   "lista": [
+    "Porto | 01/06/2030 → 02/06/2030 · 1 diária",
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias"
+   ]
+  },
+  {
+   "passo": "4 apos Check-out=2030-06-05",
+   "folha": {
+    "cidade": "Lisboa",
+    "checkin": "2030-06-10",
+    "checkout": "2030-06-13",
+    "erro": "O check-out precisa ser depois do check-in."
+   },
+   "lista": [
+    "Porto | 01/06/2030 → 02/06/2030 · 1 diária",
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias"
+   ]
+  },
+  {
+   "passo": "5 folha fechada (lista final)",
+   "folha": null,
+   "lista": [
+    "Porto | 01/06/2030 → 02/06/2030 · 1 diária",
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias"
+   ]
+  }
+ ],
+ "1366": [
+  {
+   "passo": "1 folha aberta (cidade nova)",
+   "folha": {
+    "cidade": "",
+    "checkin": "",
+    "checkout": "",
+    "erro": null
+   },
+   "lista": [
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias",
+    "Cidade sem nome | Sem datas"
+   ]
+  },
+  {
+   "passo": "2 apos Cidade=Porto",
+   "folha": {
+    "cidade": "Porto",
+    "checkin": "",
+    "checkout": "",
+    "erro": null
+   },
+   "lista": [
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias",
+    "Porto | Sem datas"
+   ]
+  },
+  {
+   "passo": "3 apos Check-in=2030-06-01",
+   "folha": {
+    "cidade": "Lisboa",
+    "checkin": "2030-06-10",
+    "checkout": "2030-06-13",
+    "erro": null
+   },
+   "lista": [
+    "Porto | 01/06/2030 → 02/06/2030 · 1 diária",
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias"
+   ]
+  },
+  {
+   "passo": "4 apos Check-out=2030-06-05",
+   "folha": {
+    "cidade": "Lisboa",
+    "checkin": "2030-06-10",
+    "checkout": "2030-06-13",
+    "erro": "O check-out precisa ser depois do check-in."
+   },
+   "lista": [
+    "Porto | 01/06/2030 → 02/06/2030 · 1 diária",
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias"
+   ]
+  },
+  {
+   "passo": "5 folha fechada (lista final)",
+   "folha": null,
+   "lista": [
+    "Porto | 01/06/2030 → 02/06/2030 · 1 diária",
+    "Lisboa | 10/06/2030 → 13/06/2030 · 3 diárias"
+   ]
+  }
+ ]
+}
