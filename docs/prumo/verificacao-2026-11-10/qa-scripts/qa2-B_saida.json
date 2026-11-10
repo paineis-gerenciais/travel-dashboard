@@ -1,0 +1,108 @@
+{
+ "360": {
+  "viewport": {
+   "innerWidth": 360,
+   "innerHeight": 800,
+   "vvW": 360,
+   "vvH": 800
+  },
+  "backdrop": {
+   "x": 19,
+   "y": 102.7,
+   "w": 324,
+   "h": 608.5,
+   "right": 343,
+   "bottom": 711.2
+  },
+  "sheet": {
+   "x": 19,
+   "y": 410.7,
+   "w": 324,
+   "h": 300.5,
+   "right": 343,
+   "bottom": 711.2
+  },
+  "diasCard": {
+   "x": 16,
+   "y": 101.7,
+   "w": 328,
+   "h": 610.5,
+   "right": 344,
+   "bottom": 712.2
+  },
+  "backdropPosition": "fixed",
+  "backdropDentroDoCartao": true,
+  "cartaoContain": "layout paint",
+  "cartaoWillChange": "transform",
+  "scroll": {
+   "y": 0,
+   "mainScroll": 147
+  },
+  "cobreTela": false,
+  "hit": {
+   "topLeft": "appbar",
+   "topRight": "appbar",
+   "bottomLeft": "BUTTON",
+   "bottomRight": "BUTTON",
+   "centro": "sheet-backdrop"
+  },
+  "inputVisivel": {
+   "top": 643.1875,
+   "bottom": 687.1875,
+   "dentroDaTela": true
+  }
+ },
+ "1366": {
+  "viewport": {
+   "innerWidth": 1366,
+   "innerHeight": 768,
+   "vvW": 1366,
+   "vvH": 768
+  },
+  "backdrop": {
+   "x": 350,
+   "y": 188.8,
+   "w": 668,
+   "h": 568.5,
+   "right": 1018,
+   "bottom": 757.3
+  },
+  "sheet": {
+   "x": 404,
+   "y": 330.8,
+   "w": 560,
+   "h": 284.5,
+   "right": 964,
+   "bottom": 615.3
+  },
+  "diasCard": {
+   "x": 347,
+   "y": 187.8,
+   "w": 672,
+   "h": 570.5,
+   "right": 1019,
+   "bottom": 758.3
+  },
+  "backdropPosition": "fixed",
+  "backdropDentroDoCartao": true,
+  "cartaoContain": "layout paint",
+  "cartaoWillChange": "transform",
+  "scroll": {
+   "y": 0,
+   "mainScroll": 115
+  },
+  "cobreTela": false,
+  "hit": {
+   "topLeft": "appbar",
+   "topRight": "appbar",
+   "bottomLeft": "screen",
+   "bottomRight": "screen",
+   "centro": "sheet"
+  },
+  "inputVisivel": {
+   "top": 547.34375,
+   "bottom": 591.34375,
+   "dentroDaTela": true
+  }
+ }
+}

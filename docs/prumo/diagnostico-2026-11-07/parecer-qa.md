@@ -4,7 +4,7 @@
 - **Parecer:** APROVADO COM RESSALVAS para uso com um editor por viagem; REPROVADO para uso com dois editores na mesma viagem (1 defeito de severidade alta, reproduzido 5 de 5 vezes).
 - **Defeitos por severidade:** bloqueador 0 · alto 1 · médio 2 · baixo 1.
 - **Ambiente:** build de teste apontando para emuladores (Firestore 8080, Auth 9099), `vite preview` na 4173, Chromium do Playwright (headless), Lighthouse 13.6.0. Dados fictícios (qa-a/qa-b@exemplo.com). Medições locais; o desempenho NÃO representa produção. Linha de base (111 + 17 + 18 testes) foi rodada pelo Head e não foi repetida.
-- **Scripts:** `docs/diagnostico-2026-11-07/qa-scripts/` (lib.js, A_axe.js, B_teclado.js, C_resp.js, D_perf.js, E_concorrencia.js; resultados em `*_result*.json|log`). Rodar: `cd /home/user/travel-dashboard && NODE_PATH=$(npm root -g) node <script>`.
+- **Scripts:** `docs/prumo/diagnostico-2026-11-07/qa-scripts/` (lib.js, A_axe.js, B_teclado.js, C_resp.js, D_perf.js, E_concorrencia.js; resultados em `*_result*.json|log`). Rodar: `cd /home/user/travel-dashboard && NODE_PATH=$(npm root -g) node <script>`.
 
 ## A. Acessibilidade automatizada (axe 4.10.3, tags wcag2a, wcag2aa, wcag21aa; PrintView excluído)
 

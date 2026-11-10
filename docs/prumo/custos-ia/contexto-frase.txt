@@ -1,0 +1,4 @@
+Hoje: 2027-03-14. Moeda da viagem: BRL.
+Participantes: [{"id":"p1","nome":"Daniel"},{"id":"p2","nome":"Ana"},{"id":"p3","nome":"Bruno"},{"id":"p4","nome":"Carla"}]
+Cidades e datas: Lisboa 2027-03-10 a 2027-03-14; Porto 2027-03-14 a 2027-03-18; Madri 2027-03-18 a 2027-03-21.
+Frase: "jantar no Porto 180 reais, pago pela Ana, dividido entre todos, e táxi até o hotel 35 que eu paguei"

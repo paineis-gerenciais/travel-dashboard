@@ -1,7 +1,7 @@
 # Diagnóstico de maturidade — travel-dashboard
 
 - **Data:** 2026-11-07 · **Commit analisado:** `b5a3ce2` (merge do PR #15, 2026-08-18) · **Modo:** somente leitura; nenhuma alteração de código, issue, PR ou publicação.
-- **Método:** leitura da documentação; execução dos comandos reais do projeto; confronto documentação × realidade; pareceres em paralelo de segurança (devsecops-engineer), arquitetura (software-architect), qualidade (qa-engineer) e produto (product-manager), integrados e com cada achado alto confirmado pelo Head no emulador ou no código. Pareceres completos e scripts de verificação em `docs/diagnostico-2026-11-07/`.
+- **Método:** leitura da documentação; execução dos comandos reais do projeto; confronto documentação × realidade; pareceres em paralelo de segurança (devsecops-engineer), arquitetura (software-architect), qualidade (qa-engineer) e produto (product-manager), integrados e com cada achado alto confirmado pelo Head no emulador ou no código. Pareceres completos e scripts de verificação em `docs/prumo/diagnostico-2026-11-07/`.
 - **Revisões anteriores:** nenhuma no repositório. Não há `docs/`, PRD, ADR, parecer de QA ou de segurança. O rastro são o `README.md` e 17 guias `DEPLOY-*.md` na raiz.
 - **Rótulos:** `[FATO]` com comando, arquivo:linha ou captura; `[HIPÓTESE]` vai para "A confirmar", não vira achado; `[RECOMENDAÇÃO]`.
 
@@ -33,7 +33,7 @@ Ambiente: Node 22.23.4, npm 10.9.9, Java 21, firebase-tools 15.35.0 (instalado n
 | Lint | `npm run lint` | **falha, exit 2:** "ESLint couldn't find a configuration file". O script e os plugins existem no `package.json`, a configuração não | — |
 | Auditoria | `npm audit` / `npm audit --omit=dev` | 33 vulnerabilidades (2 críticas, 15 altas, 13 moderadas, 3 baixas); só produção: 12 (6 altas, 6 moderadas). `xlsx@0.18.5`: alta, "No fix available" | — |
 | Desatualizadas | `npm outdated` | firebase 10.14.1 → 13.2.0; vite 5.4 → 8.3; vitest 1.6 → 5.1; eslint 8.57 (fim de vida) → 10.14; react 18.3 → 19.3; rules-unit-testing 3.0 → 5.0 | — |
-| Verificação independente das regras | `docs/diagnostico-2026-11-07/verifica-regras.mjs` e `verifica-regras-2.mjs` no emulador | 14 cenários: **12 permitidos que deveriam ser negados**, 2 controles corretos | ~10 s |
+| Verificação independente das regras | `docs/prumo/diagnostico-2026-11-07/verifica-regras.mjs` e `verifica-regras-2.mjs` no emulador | 14 cenários: **12 permitidos que deveriam ser negados**, 2 controles corretos | ~10 s |
 | Acessibilidade (axe 4.10.3, WCAG 2.0/2.1 A e AA) | `qa-scripts/A_axe.js`, 8 telas × 2 larguras | Login e Minhas viagens: **0 violações**; demais telas: uma regra, `color-contrast` (serious), 6 a 11 nós por tela, sempre `--text-3` `#8e97a5` (2,94:1) | — |
 | Teclado | `qa-scripts/B_teclado.js` | foco visível nos 5 botões da barra; 15 Tab não saem da folha; Esc fecha e devolve o foco; **Shift+Tab logo após abrir a folha escapa para o fundo** | — |
 | Responsividade 360 e 1366 px | `qa-scripts/C_resp.js` + 10 capturas | **sem rolagem horizontal** nem elemento fora da janela nas 14 combinações tela × largura | — |
@@ -72,7 +72,7 @@ Observações sobre a execução:
 
 #### A1 · O modelo de convite e acesso tem quatro brechas; remover alguém não remove de verdade
 
-`[FATO]` Verificado no emulador do Firestore com as regras do repositório (scripts em `docs/diagnostico-2026-11-07/`). Resultado dos 14 cenários:
+`[FATO]` Verificado no emulador do Firestore com as regras do repositório (scripts em `docs/prumo/diagnostico-2026-11-07/`). Resultado dos 14 cenários:
 
 | # | Cenário | Esperado | Obtido |
 |---|---|---|---|
@@ -93,7 +93,7 @@ Agravantes de interface `[FATO]`: a lista "Com acesso" é montada a partir de `m
 
 - **Quem é afetado e como:** o dono e os membros de qualquer viagem de onde alguém foi removido (roteiro, custos e links de documentos continuam legíveis e editáveis pelo ex-membro, sem aparecer na lista); convidados que ainda não entraram (alguém que saiba o e-mail convidado toma o lugar). O cadastro por e-mail é aberto a qualquer pessoa na internet (`Login.jsx:143-158`).
 - **Severidade:** alto, não bloqueador: o vetor principal exige alguém que já esteve dentro, e o vetor V exige saber qual e-mail foi convidado e agir antes do convidado. Para um grupo familiar o risco prático é baixo hoje, mas a garantia que a própria documentação promete (`firestore.rules:6-11`: "só quem está na lista", "só se existir um convite válido", "Revogar acesso = o DONO remove") não se sustenta.
-- **Correção mínima** (texto proposto das regras em `docs/diagnostico-2026-11-07/parecer-seguranca.md`, não aplicado): na regra C, exigir convite com `status == 'pendente'`, `ownerUid` igual ao dono da viagem e `email_verified == true`; criar convite só pelo dono da viagem e com id `tripId_email`; validar `authorUid` em comentários e atividade; impedir `role: 'owner'` por quem não é dono. No cliente: `revokeMember` apaga o convite; cadastro por e-mail chama `sendEmailVerification`; "Com acesso" parte de `memberUids`. Onze testes de regras novos (lista no parecer). Publicar as regras junto com o cliente.
+- **Correção mínima** (texto proposto das regras em `docs/prumo/diagnostico-2026-11-07/parecer-seguranca.md`, não aplicado): na regra C, exigir convite com `status == 'pendente'`, `ownerUid` igual ao dono da viagem e `email_verified == true`; criar convite só pelo dono da viagem e com id `tripId_email`; validar `authorUid` em comentários e atividade; impedir `role: 'owner'` por quem não é dono. No cliente: `revokeMember` apaga o convite; cadastro por e-mail chama `sendEmailVerification`; "Com acesso" parte de `memberUids`. Onze testes de regras novos (lista no parecer). Publicar as regras junto com o cliente.
 - **Esforço:** cerca de 1 dia (regras 2–3 h, testes 3–4 h, cliente 2 h, publicação e verificação 1 h). Responsável: frontend-engineer; devsecops-engineer confere.
 
 #### A2 · Não existe portão de qualidade: o CI de regras e E2E está vermelho desde a primeira execução e nada depende dele
@@ -110,7 +110,7 @@ Agravantes de interface `[FATO]`: a lista "Com acesso" é montada a partir de `m
 
 #### A3 · Duas pessoas editando a mesma viagem perdem dados em silêncio
 
-- `[FATO]` Reproduzido pelo qa-engineer no emulador, com duas contas na mesma viagem, em **5 de 5 execuções** (`docs/diagnostico-2026-11-07/qa-scripts/E_concorrencia.js`; logs `E_result_run1.log` e `E_result_run2_variante.log`; capturas `qa-capturas/concorrencia-*.png`). Cenário: B com o cursor no campo "Cidade"; A muda a diária de 100 para 200 e conclui; B digita " Norte" e sai do campo. Esperado sem defeito: "Lisboa Norte" e R$ 600,00 nos dois lados.
+- `[FATO]` Reproduzido pelo qa-engineer no emulador, com duas contas na mesma viagem, em **5 de 5 execuções** (`docs/prumo/diagnostico-2026-11-07/qa-scripts/E_concorrencia.js`; logs `E_result_run1.log` e `E_result_run2_variante.log`; capturas `qa-capturas/concorrencia-*.png`). Cenário: B com o cursor no campo "Cidade"; A muda a diária de 100 para 200 e conclui; B digita " Norte" e sai do campo. Esperado sem defeito: "Lisboa Norte" e R$ 600,00 nos dois lados.
   - Variante 1 (B sai do campo logo após digitar), 2 de 2: o Firestore fica `Lisboa / 200`; o texto de B some da tela 10 ms depois do Tab, sem aviso.
   - Variante 2 (B espera 1,5 s antes de sair), 3 de 3: o Firestore fica `Lisboa Norte / 100`; a diária de A é sobrescrita; antes de recarregar, A via R$ 300,00 e B via R$ 600,00.
   - Nenhuma execução preservou as duas edições. Resultado idêntico a cada repetição: não é instabilidade de teste.
@@ -155,7 +155,7 @@ Agravantes de interface `[FATO]`: a lista "Com acesso" é montada a partir de `m
 
 - `[FATO]` Não existe uma frase do problema que o app resolve. O `README.md` ainda descreve a "migração do Apps Script" e cita Fases 2 e 3 como futuras; o produto de hoje (coordenação de grupo e controle de dinheiro) aparece só como "aposta" em `PESQUISA-ROTEIRO-T1.4.md`.
 - `[FATO]` `DEPLOY-FASE1-COMPLETA.md:189-198` diz que a pesquisa com usuários (T-1.4) "destrava a Fase 2" e que sem ela "a Fase 2 volta a ser aposta". Não há registro de que foi feita, nem leitura de analytics. Fase 2, Fase 5, redesign, rateio e anexos foram entregues assim mesmo.
-- `[FATO]` Oito decisões ficaram "até ter dados" (chat × mensagens, Por dia × categorias, paleta, gravar por item, e-mail automático, push, Cloud Storage, rateio); nenhuma condição foi cumprida, e três foram superadas por entregas posteriores sem registro (tabela em `docs/diagnostico-2026-11-07/parecer-produto.md`).
+- `[FATO]` Oito decisões ficaram "até ter dados" (chat × mensagens, Por dia × categorias, paleta, gravar por item, e-mail automático, push, Cloud Storage, rateio); nenhuma condição foi cumprida, e três foram superadas por entregas posteriores sem registro (tabela em `docs/prumo/diagnostico-2026-11-07/parecer-produto.md`).
 - `[FATO]` Login por celular exige plano Blaze (`DEPLOY-LOGIN-CELULAR-CONFIG.md:15-18`); não há registro de ativação; a própria mensagem de erro orienta a usar e-mail (`Login.jsx:18`).
 - **Quem é afetado:** o autor, que não consegue medir se uma mudança ajudou; e a intenção "evoluir", que sem linha de base é aposta.
 - **Correção mínima:** escrever o problema em uma frase e uma meta de uso; ler o Firebase Analytics (eventos já instrumentados) e a coleção `feedback`; 3 entrevistas do roteiro T-1.4 com pelo menos 1 não usuário; decidir "manter, medir ou remover" para login por celular. Esforço: 1 dia de trabalho do autor, mais as entrevistas.
@@ -225,18 +225,18 @@ Agravantes de interface `[FATO]`: a lista "Com acesso" é montada a partir de `m
 
 | # | O quê | Responsável | Como conferir |
 |---|---|---|---|
-| 1 | Corrigir as regras de convite e acesso e o cliente (apagar convite ao revogar, verificação de e-mail no cadastro, "Com acesso" a partir de `memberUids`), com os 11 testes de regras propostos; publicar as regras junto com o cliente | frontend-engineer implementa; devsecops-engineer revisa; Head integra e publica com autorização | `npm run test:rules` verde com os testes novos; os scripts `docs/diagnostico-2026-11-07/verifica-regras*.mjs` devolvem NEGADO em todos os cenários de ataque; Console → Regras com data igual ao commit; teste manual: dono remove uma conta de teste e ela não volta nem recarregando |
+| 1 | Corrigir as regras de convite e acesso e o cliente (apagar convite ao revogar, verificação de e-mail no cadastro, "Com acesso" a partir de `memberUids`), com os 11 testes de regras propostos; publicar as regras junto com o cliente | frontend-engineer implementa; devsecops-engineer revisa; Head integra e publica com autorização | `npm run test:rules` verde com os testes novos; os scripts `docs/prumo/diagnostico-2026-11-07/verifica-regras*.mjs` devolvem NEGADO em todos os cenários de ataque; Console → Regras com data igual ao commit; teste manual: dono remove uma conta de teste e ela não volta nem recarregando |
 | 2 | Portão de qualidade: `java-version: 21`, deploy dependente do Qualidade, `permissions: contents: read`, proteção de `main` exigindo o check | devsecops-engineer; o usuário autoriza a proteção do branch | próximo PR com "Qualidade" verde (regras e E2E executados no CI); `GET /repos/paineis-gerenciais/travel-dashboard/branches/main/protection` lista `qualidade` em `required_status_checks` |
 | 3 | Concorrência (A3): o usuário escolhe entre as opções a, b e c; implementar ids em vez de índices e, na opção a, o rebase com `rev`; transformar `E_concorrencia.js` em E2E de regressão com duas contas; corrigir a nota em `DEPLOY-FASE2.md` | usuário decide; frontend-engineer implementa; software-architect registra o ADR; qa-engineer valida | o E2E de duas contas termina com "Lisboa Norte" e R$ 600,00 nos dois lados em 5 de 5 execuções; se for risco aceito, o registro (quem e quando) está no repositório e o aviso aparece na tela |
 
 Em seguida, nesta ordem: higiene e rastro (M3 e M4: apagar os 10 arquivos mortos, `.gitignore` para `test-results/` e `playwright-report/`, lint no CI, README, `CHANGELOG.md`, `CLAUDE.md` com "Verificação por área", `APP_VERSION` do `package.json`, `DEPLOY-*.md` para `docs/historico/`), backup e permissões de membro (M1), acessibilidade (M6), dependências (M2) e, antes de qualquer funcionalidade nova, o passo de produto (M5).
 
-## Anexos (em `docs/diagnostico-2026-11-07/`)
+## Anexos (em `docs/prumo/diagnostico-2026-11-07/`)
 
 - `parecer-seguranca.md` (devsecops-engineer): texto proposto das regras, 11 testes faltantes, inventário de dados pessoais, plano de implantação e rollback.
 - `parecer-arquitetura.md` (software-architect): pontos a preservar, limites do documento único, roteiros dos testes H1–H4, sequência recomendada.
 - `parecer-qa.md` (qa-engineer): medições de acessibilidade, teclado, responsividade, carga e o teste de edição simultânea, com comandos e saídas.
 - `parecer-produto.md` (product-manager): decisões adiadas, hipóteses sobre uso e sinais para evoluir.
-- `verifica-regras.mjs`, `verifica-regras-2.mjs`: os 14 cenários executados contra o emulador. Como rodar, na raiz do projeto: `firebase emulators:exec --only firestore "node --input-type=module < docs/diagnostico-2026-11-07/verifica-regras.mjs"`. O segundo script espera um emulador avulso em `127.0.0.1:8181` (`java -jar <jar do emulador> --host=127.0.0.1 --port=8181 --rules=firestore.rules`); ou troque `host`/`port` no script e use o mesmo comando do primeiro.
-- `qa-scripts/`: `A_axe.js`, `B_teclado.js`, `C_resp.js`, `D_perf.js`, `E_concorrencia.js`, `lib.js` e resultados (`*_result*`). Precisam dos emuladores e do `vite preview` de pé (receita em `parecer-qa.md`), do Playwright e de `axe-core` instalado em `docs/diagnostico-2026-11-07/qa-tools` (`npm i --prefix docs/diagnostico-2026-11-07/qa-tools axe-core@4.10.3`). Rodar: `NODE_PATH=$(npm root -g) node docs/diagnostico-2026-11-07/qa-scripts/<script>`.
+- `verifica-regras.mjs`, `verifica-regras-2.mjs`: os 14 cenários executados contra o emulador. Como rodar, na raiz do projeto: `firebase emulators:exec --only firestore "node --input-type=module < docs/prumo/diagnostico-2026-11-07/verifica-regras.mjs"`. O segundo script espera um emulador avulso em `127.0.0.1:8181` (`java -jar <jar do emulador> --host=127.0.0.1 --port=8181 --rules=firestore.rules`); ou troque `host`/`port` no script e use o mesmo comando do primeiro.
+- `qa-scripts/`: `A_axe.js`, `B_teclado.js`, `C_resp.js`, `D_perf.js`, `E_concorrencia.js`, `lib.js` e resultados (`*_result*`). Precisam dos emuladores e do `vite preview` de pé (receita em `parecer-qa.md`), do Playwright e de `axe-core` instalado em `docs/prumo/diagnostico-2026-11-07/qa-tools` (`npm i --prefix docs/prumo/diagnostico-2026-11-07/qa-tools axe-core@4.10.3`). Rodar: `NODE_PATH=$(npm root -g) node docs/prumo/diagnostico-2026-11-07/qa-scripts/<script>`.
 - `qa-capturas/`: login, Minhas viagens, Dias, Custos e Mais em 360 e 1366 px; foco por teclado na barra; estado final das duas contas na rodada 3 do teste de concorrência.
