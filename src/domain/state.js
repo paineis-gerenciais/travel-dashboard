@@ -51,9 +51,12 @@ export function blankState() {
       // Participantes da divisão de despesas: [{ id, name }].
       // Vazio = usa rótulos genéricos derivados de `travelers`.
       participants: [],
-      // Acertos já confirmados: [{ key, at }]. A chave inclui o valor, então um
-      // acerto confirmado volta a ficar pendente se a dívida mudar.
+      // LEGADO: acertos confirmados [{ key, at }]. Migrado para `payments` em
+      // normalizeState (ver migratePayments) e esvaziado; não usar.
       settlementsDone: [],
+      // Pagamentos de acerto já feitos: [{ id, de, para, valor, data }]
+      // (`de` pagou `valor` reais a `para`; `data` ISO). Abatem o saldo.
+      payments: [],
       // Documentos gerais da viagem (links): [{ id, label, url }].
       // Não pertencem a nenhum dia — seguro-viagem, passaporte, apólice.
       documents: [],
@@ -75,6 +78,7 @@ export function normalizeState(s) {
     }
   );
   migrateParticipants(s);
+  migratePayments(s);
   return s;
 }
 
@@ -130,4 +134,29 @@ export function migrateParticipants(s) {
   });
 
   return s;
+}
+
+/**
+ * Migração de `settlementsDone` (chave `de>para>centavos`, com `at`) para
+ * `payments` ({ id, de, para, valor, data }). Idempotente: o id do pagamento
+ * migrado é derivado da chave e da data, então repetir não duplica; depois de
+ * migrar, `settlementsDone` fica vazio.
+ */
+export function migratePayments(s) {
+  const atuais = Array.isArray(s.settings.payments) ? s.settings.payments.filter((x) => x && x.id) : [];
+  const ids = new Set(atuais.map((x) => x.id));
+  const antigos = Array.isArray(s.settings.settlementsDone) ? s.settings.settlementsDone : [];
+  antigos.forEach((x) => {
+    const partes = String(x?.key || '').split('>');
+    if (partes.length !== 3) return;
+    const [de, para, cents] = partes;
+    const c = Number(cents);
+    if (!de || !para || de === para || !Number.isInteger(c) || c <= 0) return;
+    const id = `mig-${x.key}-${x.at || ''}`;
+    if (ids.has(id)) return;
+    ids.add(id);
+    atuais.push({ id, de, para, valor: c / 100, data: x.at || '' });
+  });
+  s.settings.payments = atuais;
+  s.settings.settlementsDone = [];
 }
