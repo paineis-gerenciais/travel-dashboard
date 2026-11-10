@@ -10,26 +10,32 @@
 // --viagem  exportação atual da viagem (Mais → Planilha → Exportar dados atuais,
 //           ou Mais → Exportar JSON). Simula a mesclagem e aponta possíveis
 //           duplicatas e ids que não existem.
-// --xlsx    grava a planilha só se a validação passar, e só dentro de importacoes/.
+// --xlsx    grava a planilha só se a validação passar.
+//
+// Privacidade: dentro do repositório, o script só lê e grava em importacoes/
+// (ignorada pelo git); a única exceção de leitura é o exemplo fictício em
+// e2e/fixtures/. Fora do repositório (ex.: pasta temporária) é permitido. Os
+// caminhos são comparados depois de resolver links simbólicos.
 //
 // Saída: 0 = pronto para importar; 1 = há erro (nada é gravado); 2 = uso incorreto.
-import { readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
-import { resolve, dirname, extname, relative, sep } from 'node:path';
+import { readFileSync, writeFileSync, statSync, mkdirSync, realpathSync, existsSync } from 'node:fs';
+import { resolve, dirname, basename, extname, relative, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
 import {
-  ESQUEMA, validarAba, mesclarPlanilha, matrizesDeJson, kindPorAba,
+  ESQUEMA, validarAba, mesclarPlanilha, matrizesDeJson, kindPorAba, possiveisDuplicatas,
 } from '../../../../src/domain/sheet.js';
 import { normalizeState } from '../../../../src/domain/state.js';
 
-const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const PASTA_SAIDA = resolve(RAIZ, 'importacoes');
+const RAIZ = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../..'));
+const PASTA_SAIDA = join(RAIZ, 'importacoes');
+const PASTA_EXEMPLOS = join(RAIZ, 'e2e', 'fixtures');
 const LIMITE_BYTES = 2 * 1024 * 1024; // o mesmo limite da tela de importação
 
+class ErroDeUso extends Error {}
+
 function uso(msg) {
-  if (msg) console.error(`Erro: ${msg}`);
-  console.error('Uso: node .claude/skills/roteiro-viagem/scripts/validar-importacao.mjs <importacao.json> [--xlsx <saida.xlsx>] [--viagem <exportacao.xlsx|.json>]');
-  process.exit(2);
+  throw new ErroDeUso(`${msg}\nUso: node .claude/skills/roteiro-viagem/scripts/validar-importacao.mjs <importacao.json> [--xlsx <saida.xlsx>] [--viagem <exportacao.xlsx|.json>]`);
 }
 
 function lerArgs(argv) {
@@ -48,25 +54,47 @@ function lerArgs(argv) {
   return args;
 }
 
+/* ---------- Guarda de caminhos ---------- */
+
+const dentroDe = (base, alvo) => {
+  const rel = relative(base, alvo);
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+};
+
+/** Caminho real: resolve links simbólicos do trecho que já existe e anexa o resto. */
+function caminhoReal(p) {
+  let atual = resolve(p);
+  const resto = [];
+  while (!existsSync(atual)) {
+    resto.unshift(basename(atual));
+    const pai = dirname(atual);
+    if (pai === atual) break;
+    atual = pai;
+  }
+  return join(realpathSync(atual), ...resto);
+}
+
+/** Recusa caminho dentro do repositório que não esteja em importacoes/ (ou nos exemplos, para leitura). */
+function conferirCaminho(p, { leitura }) {
+  const real = caminhoReal(p);
+  if (real !== RAIZ && !dentroDe(RAIZ, real)) return real; // fora do repositório
+  if (dentroDe(PASTA_SAIDA, real)) return real;
+  if (leitura && dentroDe(PASTA_EXEMPLOS, real)) return real;
+  const onde = relative(RAIZ, real) || '.';
+  throw new Error(leitura
+    ? `${p} está no repositório fora de importacoes/ (${onde}). Mova o arquivo para importacoes/, que o git ignora.`
+    : `grave dentro de importacoes/ (ignorada pelo git), não em ${onde}`);
+}
+
+/* ---------- Leitura ---------- */
+
 function lerJson(caminho) {
   const tamanho = statSync(caminho).size;
   if (tamanho > LIMITE_BYTES) throw new Error(`${caminho} tem ${tamanho} bytes; o app recusa acima de 2 MB`);
-  return JSON.parse(readFileSync(caminho, 'utf8'));
+  return JSON.parse(readFileSync(caminho, 'utf8').replace(/^﻿/, ''));
 }
 
-const norm = (v) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-
-/** Chave para achar o "mesmo item" quando a linha vem sem id. */
-const CHAVE = {
-  cities: (x) => norm(x.city),
-  transports: (x) => [x.date, norm(x.originCity), norm(x.destCity), norm(x.mode)].join('|'),
-  foodItems: (x) => [x.date, norm(x.type), norm(x.place)].join('|'),
-  attractions: (x) => [x.date, norm(x.name)].join('|'),
-  otherExpenses: (x) => [x.date, norm(x.name)].join('|'),
-  checklist: (x) => norm(x.item),
-};
-
-/** Valida matrizes por kind; devolve itens, erros e o total de linhas. */
+/** Valida matrizes por kind; devolve itens e erros. */
 function validarTudo(matrizes) {
   const porKind = {};
   const errosPorKind = {};
@@ -97,6 +125,8 @@ function lerViagem(caminho) {
   return validarTudo(matrizes).porKind;
 }
 
+/* ---------- Avisos e erros extras ---------- */
+
 /** Avisos de qualidade: não impedem a importação, mas a skill deve tratá-los. */
 function avisosDeQualidade(porKind) {
   const avisos = [];
@@ -104,11 +134,11 @@ function avisosDeQualidade(porKind) {
   Object.entries(porKind).forEach(([kind, itens]) => {
     itens.forEach((x) => {
       if (!x.id && x.status && x.status !== 'Planejado' && kind !== 'checklist') add(kind, x._linha, `status "${x.status}" num item novo; itens pesquisados entram como "Planejado"`);
-      if (['cities', 'transports', 'attractions', 'otherExpenses', 'foodItems'].includes(kind)) {
+      if (!x.id && ['cities', 'transports', 'attractions', 'otherExpenses', 'foodItems'].includes(kind)) {
         const custo = kind === 'cities' ? x.nightly : x.cost;
         if (!custo) add(kind, x._linha, 'sem custo; se não houver fonte confiável, registre isso no relatorio.md');
       }
-      if (['cities', 'attractions', 'transports'].includes(kind) && !x.link) add(kind, x._linha, 'sem link de fonte');
+      if (!x.id && ['cities', 'attractions', 'transports'].includes(kind) && !x.link) add(kind, x._linha, 'sem link de fonte');
     });
   });
   return avisos;
@@ -123,37 +153,28 @@ function errosDeCoerencia(porKind) {
   return erros;
 }
 
-/** Compara com a viagem atual: ids inexistentes e possíveis duplicatas. */
+/** Compara com a viagem atual: ids inexistentes, possíveis duplicatas e o resumo da mesclagem. */
 function compararComViagem(viagem, porKind) {
   const avisos = [];
   Object.entries(porKind).forEach(([kind, itens]) => {
-    const atuais = viagem[kind] || [];
-    const ids = new Set(atuais.map((x) => x.id).filter(Boolean));
-    const chaves = new Map(atuais.map((x) => [CHAVE[kind](x), x]));
+    const ids = new Set((viagem[kind] || []).map((x) => x.id).filter(Boolean));
     itens.forEach((x) => {
-      const aba = ESQUEMA[kind].aba;
-      if (x.id && !ids.has(x.id)) avisos.push(`${aba} · linha ${x._linha}: id "${x.id}" não existe na viagem; vai virar item novo`);
-      if (!x.id) {
-        const igual = chaves.get(CHAVE[kind](x));
-        if (igual) {
-          avisos.push(igual.id
-            ? `${aba} · linha ${x._linha}: parece duplicar um item que já existe (id "${igual.id}"); use esse id para atualizar em vez de criar`
-            : `${aba} · linha ${x._linha}: parece duplicar um item que já existe na viagem (sem id na exportação); confira antes de importar`);
-        }
-      }
+      if (x.id && !ids.has(x.id)) avisos.push(`${ESQUEMA[kind].aba} · linha ${x._linha}: id "${x.id}" não existe na viagem; vai virar item novo`);
     });
   });
-  const { resumo } = mesclarPlanilha({ ...viagem }, porKind);
+  possiveisDuplicatas(viagem, porKind).forEach(({ kind, linha, idExistente }) => {
+    avisos.push(idExistente
+      ? `${ESQUEMA[kind].aba} · linha ${linha}: parece repetir um item que já existe (id "${idExistente}"); use esse id para atualizar em vez de criar`
+      : `${ESQUEMA[kind].aba} · linha ${linha}: parece repetir um item que já existe na viagem (sem id na exportação); confira antes de importar`);
+  });
+  const { resumo } = mesclarPlanilha(viagem, porKind);
   return { avisos, resumo };
 }
 
+/* ---------- Gravação ---------- */
+
 function gravarXlsx(destino, matrizes) {
-  const alvo = resolve(destino);
-  const rel = relative(RAIZ, alvo);
-  const dentroDoRepo = !rel.startsWith('..') && !rel.startsWith(sep) && rel !== '';
-  if (dentroDoRepo && !alvo.startsWith(PASTA_SAIDA + sep)) {
-    throw new Error(`grave a planilha dentro de importacoes/ (ignorada pelo git), não em ${rel}`);
-  }
+  const alvo = conferirCaminho(destino, { leitura: false });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     ['Gerado pela skill roteiro-viagem'],
@@ -163,8 +184,10 @@ function gravarXlsx(destino, matrizes) {
   ]), 'Leia-me');
   Object.keys(ESQUEMA).forEach((kind) => {
     if (!matrizes[kind]) return;
-    const ws = XLSX.utils.aoa_to_sheet(matrizes[kind]);
-    ws['!cols'] = matrizes[kind][0].map((h) => ({ wch: Math.max(12, String(h).length + 4) }));
+    // célula ausente (undefined) vira vazia na planilha
+    const linhas = matrizes[kind].map((l) => l.map((v) => (v === undefined ? '' : v)));
+    const ws = XLSX.utils.aoa_to_sheet(linhas);
+    ws['!cols'] = linhas[0].map((h) => ({ wch: Math.max(12, String(h).length + 4) }));
     XLSX.utils.book_append_sheet(wb, ws, ESQUEMA[kind].aba);
   });
   mkdirSync(dirname(alvo), { recursive: true });
@@ -172,15 +195,21 @@ function gravarXlsx(destino, matrizes) {
   return alvo;
 }
 
+/* ---------- Principal ---------- */
+
 function main() {
   const args = lerArgs(process.argv.slice(2));
-  let obj;
-  try { obj = lerJson(args.entrada); } catch (e) { console.error(`ERRO: não foi possível ler ${args.entrada}: ${e.message}`); process.exit(1); }
+  const entrada = conferirCaminho(args.entrada, { leitura: true });
+  const viagemArq = args.viagem ? conferirCaminho(args.viagem, { leitura: true }) : null;
 
-  const { matrizes, ignoradas, erro } = matrizesDeJson(obj);
-  if (erro) { console.error(`ERRO: arquivo recusado: ${erro}`); process.exit(1); }
+  let obj;
+  try { obj = lerJson(entrada); } catch (e) { throw new Error(`não foi possível ler ${args.entrada}: ${e.message}`); }
+
+  const { matrizes, ignoradas, colunasIgnoradas = [], erro } = matrizesDeJson(obj);
+  if (erro) throw new Error(`arquivo recusado: ${erro}`);
   if (ignoradas.length) console.log(`Aviso: abas ignoradas (nome desconhecido ou não é lista): ${ignoradas.join(', ')}`);
-  if (!Object.keys(matrizes).length) { console.error('ERRO: nenhuma aba reconhecida'); process.exit(1); }
+  colunasIgnoradas.forEach(({ aba, coluna }) => console.log(`Aviso: ${aba}: coluna "${coluna}" desconhecida, ignorada`));
+  if (!Object.keys(matrizes).length) throw new Error('nenhuma aba reconhecida');
 
   const { porKind, errosPorKind } = validarTudo(matrizes);
   const coerencia = errosDeCoerencia(porKind);
@@ -198,28 +227,34 @@ function main() {
     console.log(`ERRO ${ESQUEMA[kind].aba} · linha ${e.linha} · coluna "${e.coluna}": ${e.mensagem}`);
   }));
   coerencia.forEach((m) => console.log(`ERRO ${m}`));
-
   avisosDeQualidade(porKind).forEach((m) => console.log(`Aviso: ${m}`));
 
-  if (args.viagem) {
-    try {
-      const { avisos, resumo } = compararComViagem(lerViagem(args.viagem), porKind);
-      console.log('Simulação contra a viagem atual:');
-      Object.entries(resumo).forEach(([kind, r]) => console.log(`  ${ESQUEMA[kind].aba}: ${r.criados} a criar, ${r.atualizados} a atualizar`));
-      avisos.forEach((m) => console.log(`Aviso: ${m}`));
-    } catch (e) { console.error(`ERRO: não foi possível ler a viagem em ${args.viagem}: ${e.message}`); process.exit(1); }
+  if (viagemArq) {
+    let viagem;
+    try { viagem = lerViagem(viagemArq); } catch (e) { throw new Error(`não foi possível ler a viagem em ${args.viagem}: ${e.message}`); }
+    const { avisos, resumo } = compararComViagem(viagem, porKind);
+    console.log('Simulação contra a viagem atual:');
+    Object.entries(resumo).forEach(([kind, r]) => console.log(`  ${ESQUEMA[kind].aba}: ${r.criados} a criar, ${r.atualizados} a atualizar`));
+    avisos.forEach((m) => console.log(`Aviso: ${m}`));
   }
 
+  const linhas = Object.values(porKind).reduce((a, l) => a + l.length, 0);
   if (totalErros) {
     console.log(`RESULTADO: ${totalErros} erro(s). Corrija o JSON e rode de novo. Nada foi gravado.`);
-    process.exit(1);
+    return 1;
   }
-
-  if (args.xlsx) {
-    try { console.log(`Planilha gravada em ${relative(process.cwd(), gravarXlsx(args.xlsx, matrizes))}`); } catch (e) { console.error(`ERRO: ${e.message}`); process.exit(1); }
+  if (!linhas) {
+    console.log('RESULTADO: nenhuma linha para importar. Nada foi gravado.');
+    return 1;
   }
-  const linhas = Object.values(porKind).reduce((a, l) => a + l.length, 0);
+  if (args.xlsx) console.log(`Planilha gravada em ${relative(process.cwd(), gravarXlsx(args.xlsx, matrizes)) || args.xlsx}`);
   console.log(`RESULTADO: ok, ${linhas} linha(s) em ${Object.keys(porKind).length} aba(s), pronto para importar.`);
+  return 0;
 }
 
-main();
+try {
+  process.exitCode = main();
+} catch (e) {
+  console.error(`ERRO: ${e.message}`);
+  process.exitCode = e instanceof ErroDeUso ? 2 : 1;
+}

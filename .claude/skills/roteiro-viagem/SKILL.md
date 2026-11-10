@@ -13,7 +13,7 @@ O repositório é **público**. Roteiros e exportações de viagens reais têm n
 
 - Grave tudo em `importacoes/<slug-da-viagem>-<AAAA-MM-DD>/`. A pasta está no `.gitignore`.
 - **Nunca** faça `git add` ou commit de nada em `importacoes/`, nem copie dados reais para outro lugar do repositório (testes, docs, exemplos). Exemplos usam só dados fictícios, como `e2e/fixtures/importacao-exemplo.json`.
-- Grave **todos** os arquivos da viagem (`importacao.json`, `relatorio.md`, exportações recebidas) só em `importacoes/`. O script recusa ler ou gravar dentro do repositório fora dessa pasta (exceto o exemplo em `e2e/fixtures/`).
+- Grave **todos** os arquivos da viagem (`importacao.json`, `relatorio.md`, exportações recebidas) só em `importacoes/`. Dentro do repositório, o script recusa ler ou gravar fora dessa pasta (só lê o exemplo em `e2e/fixtures/`), mesmo por link simbólico. Fora do repositório, como numa pasta temporária, ele permite.
 - Antes de encerrar, rode `git status --short`. Se aparecer arquivo da viagem fora de `importacoes/`, mova-o para lá. "Deixar o git limpo" nunca significa commitar esses arquivos.
 - Não cite caminhos de `importacoes/` nem dados da viagem (nomes, valores, reservas) em issue, PR, commit, rastro ou prompt de continuação.
 - Nas pesquisas na web, use só destino, datas e tipo de grupo. Não pesquise nomes, e-mails, telefones nem localizadores de reserva.
@@ -84,7 +84,7 @@ Regras de preenchimento:
 - `tipo` em Alimentação: `Café da manhã`, `Almoço`, `Jantar`, `Mercado` ou `Outros` (é a ordem que o app usa na tabela). Se a hospedagem incluir café, marque `cafe_incluso: "sim"`; o app cria os cafés sozinho.
 - `meio` em Transportes: texto livre e curto, como no app (`Trem`, `Voo`, `Ônibus`, `Carro`, `Barco`).
 - `check_in` de uma cidade coincide com o `check_out` da anterior quando a viagem é contínua.
-- Para atualizar um item existente, copie o `id` da exportação e mande só as colunas que mudam junto com as obrigatórias.
+- Para atualizar um item existente, copie o `id` da exportação e mande as colunas obrigatórias e só as que mudam: **coluna ausente não é alterada**. Coluna presente e vazia volta ao padrão (ex.: `status` vazio vira "Planejado"), então não mande coluna vazia sem querer.
 
 ## 5. Relatório
 
@@ -107,7 +107,7 @@ Com a exportação da viagem atual, acrescente `--viagem importacoes/<pasta>/<ex
 
 - O script usa a mesma validação da prévia do app. Saída `0` = pronto; `1` = erro (nada é gravado).
 - Corrija **todos** os erros e rode de novo. Trate os avisos: preencha o link ou o custo, ou explique no relatório por que ficaram vazios; troque linha duplicada por atualização com o `id` existente.
-- A planilha só é gravada dentro de `importacoes/`.
+- Dentro do repositório, a planilha só é gravada em `importacoes/`.
 
 ## 7. Entregar
 
