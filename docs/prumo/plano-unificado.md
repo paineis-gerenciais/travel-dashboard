@@ -214,6 +214,7 @@ Pedidas de novo no momento, uma a uma:
 - **Skill de IA:** D8 ajustada para JSON e planilha (#41).
 - **Backlog aberto com autorização:** #42 (membro não altera o e-mail exibido), #43 (excluir viagem apaga membros e convites) e #44 (emuladores com projeto `demo-*`).
 - **Skill de IA (#41):** PR #45. Segurança aprovada com ressalvas; QA reprovou duas vezes (campos zerados na atualização parcial, pelo JSON e depois pela planilha do script) e aprovou com ressalvas depois das correções. Revisões em `docs/prumo/revisao-pr-45/` (no PR #45).
+- **Ressalvas baixas do PR #45:** issue #46. **Incidente de processo** (delegações paralelas com pasta no mesmo diretório; uma limpeza apagou o trabalho da outra): paineis-gerenciais/prumo#13.
 
 ## 14. Próximos passos
 
