@@ -21,3 +21,6 @@ npx firebase emulators:exec --only firestore --project demo-rev37 "node docs/pru
 ```
 
 Reexecução do Head em 2026-11-10, com `provas-v2.cjs` nesse esquema: `TOTAL 38 | conforme esperado 38 | divergentes 0`.
+
+## Verificação no navegador (2026-11-10, depois do merge)
+`navegador/`: o qa-engineer testou com os emuladores, no commit `fb91011` (o PR combinado com o `main`), o único ponto que as revisões deixaram sem execução (R2). Uma conta de e-mail e senha, depois de confirmar o e-mail, tem o convite aceito **sem novo login**, tanto pelo botão "Já confirmei" quanto recarregando a página. Numa cópia sem a renovação do token, a recarga falha: a correção é necessária. Cenários C1 a C6b passaram e não houve defeito novo. Relatório em `navegador/relatorio.md`, script em `navegador/qa37.mjs`, saídas em `navegador/saida*.log` (códigos do emulador redigidos) e 11 capturas em `navegador/capturas/`, com contas fictícias.
